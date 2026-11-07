@@ -16,8 +16,8 @@ export const NOMES_TIPO: Record<TipoObra, string> = {
 };
 
 /** Gera a obra em status 'planejamento', sem baseline, com valores estimados (Q19) e datas pela rede de precedência. */
-export function gerarObra(params: ParametrosNovaObra, id: string): Obra {
-  void params; void id; throw new Error('gerarObra: não implementado');
+export function gerarObra(params: ParametrosNovaObra, id: string, modelo: ModeloObra = MODELOS[params.tipo]): Obra {
+  void params; void id; void modelo; throw new Error('gerarObra: não implementado');
 }
 
 /** Congela baseline (v1 sem justificativa; v2+ exige justificativa). Retorna nova obra (imutável). */

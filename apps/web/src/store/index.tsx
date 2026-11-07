@@ -4,7 +4,8 @@
  * As telas usam SÓ estes hooks; nunca mexem em localStorage diretamente.
  */
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import type { Obra, Usuario, Perfil, ParametrosNovaObra, ISODate } from '@obras/shared';
+import type { Obra, Usuario, Perfil, ParametrosNovaObra, ISODate, ModeloObra, TipoObra } from '@obras/shared';
+import { MODELOS } from '@obras/shared';
 
 export interface ObrasStore {
   obras: Obra[];
@@ -21,6 +22,11 @@ export interface ObrasStore {
   congelarBaseline: (obraId: string, justificativa?: string) => void;
   lancarApontamento: (a: { obraId: string; itemId: string; percentualNovo: number; observacao?: string; fotos?: string[] }) => void;
   restaurarExemplos: () => void;
+
+  /** Modelos editáveis (Q12). Começam como cópia de MODELOS; edição persiste no localStorage. */
+  modelos: Record<TipoObra, ModeloObra>;
+  atualizarModelo: (m: ModeloObra) => void;
+  restaurarModelos: () => void;
 }
 
 const Ctx = createContext<ObrasStore | null>(null);
@@ -44,6 +50,9 @@ export function ObrasProvider({ children }: { children: ReactNode }) {
     congelarBaseline: nao,
     lancarApontamento: nao,
     restaurarExemplos: nao,
+    modelos: MODELOS,
+    atualizarModelo: nao,
+    restaurarModelos: nao,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
