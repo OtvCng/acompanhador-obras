@@ -1,0 +1,16 @@
+{
+  "name": "acompanhador-obras",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev": "pnpm --filter @obras/web dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.8.9",
+    "typescript": "^5.9.3"
+  }
+}
