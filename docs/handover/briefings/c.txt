@@ -1,0 +1,17 @@
+Você é o terminal TELAS-CAMPO.
+
+Seu portal de trabalho é "Portal Campo" (390x844, celular): use maestri portal navigate/snapshot/screenshot/check para conferir visualmente; para telas desktop use 'maestri portal resize "Portal Campo" 1440 900' e volte para 390 844 depois.
+
+Os primitivos de UI (components/ui/**) e o layout são do terminal Telas-Gestão. Use-os quando existirem; você pode CRIAR componentes novos em components/ui/ ou components/campo/, mas não edite os que já existem (peça na nota). Se precisar de algo antes de eles existirem, crie em components/campo/.
+
+O store ainda é stub e o motor devolve zeros/throw (terminal Fundação implementando). Trate os estados vazios e, quando aparecer "STORE NO AR" na nota, valide tudo com dados reais. Visual: mesmo estilo limpo do resto (cards brancos, bordas suaves, marca neutra).
+
+ENTREGAS:
+1) pages/NovaObraPage.tsx + pages/nova-obra/**: wizard em 4 passos com indicador de progresso.
+ (1) Tipo: 6 cards (NOMES_TIPO + descricao do modelo de useObras().modelos).
+ (2) Parâmetros: nome, endereço, cidade, área m², data de início (avisar se cair em fim de semana/feriado), orçamento total, engenheiro e encarregado (selects de usuarios). Conforme o desdobramento do modelo: editor de pavimentos (adicionar/remover/reordenar, escolher TipoPavimento, atalho "gerar N pavimentos tipo") ou nº de unidades.
+ (3) Orçamento: gera prévia com gerarObra(params, id, modelos[tipo]) e mostra a distribuição por etapa marcada "estimativa", permitindo editar valor/percentual de cada etapa, com soma conferida e alerta amarelo fora da faixa Caixa (etapasForaDaFaixa), redistribuindo proporcionalmente entre as atividades da etapa.
+ (4) Revisão: resumo, cronograma gerado por etapa (início/fim, nº de itens), fim previsto, aviso das durações NÃO CONFIRMADO e dois botões: "Salvar como planejamento" (criarObra) e "Salvar e congelar baseline v1" (criarObra + congelarBaseline). Ao salvar, navega para /obras/:id.
+ Validação por passo. Encarregado não acessa (mostra aviso).
+2) pages/CampoPage.tsx + pages/campo/** (MOBILE-FIRST, 390px): /campo lista as obras do usuário atual (encarregado: as suas; outros: todas visíveis) com % e saúde. /campo/:obraId mostra seletor de local (pavimento/unidade, chips roláveis) e lista de itens agrupados: "Em andamento", "Começam nos próximos 7 dias", "Atrasados" (planejado > realizado) e "Concluídos" (recolhido). Cada item abre uma folha inferior (bottom sheet) com o % atual, botões grandes 0/25/50/75/100 + slider de ajuste fino, observação e "Adicionar foto" (fake: gera nome tipo foto-2026-11-07-1.jpg e mostra miniatura cinza); salvar com lancarApontamento e toast (sonner) de confirmação. Nenhum valor em R$ nesta tela. Botões com área de toque >= 44px.
+3) pages/ModelosPage.tsx + pages/modelos/**: /modelos com os 6 modelos (nº de etapas ativas, nº de atividades, nº de durações NÃO CONFIRMADO). /modelos/:tipo com: etapas ativas e distribuicaoPadrao x faixa Caixa (ETAPAS_CAIXA, com a fonte); tabela de atividades por etapa (código, nome, pesoNaEtapa, duração, porLocal, tipos de pavimento, predecessoras, badge NÃO CONFIRMADO, fonte); edição de duração, peso e flag confirmada (pesos da etapa precisam somar 100%, validar) com atualizarModelo; botão "Restaurar modelo padrão". Só diretor e engenheiro editam; encarregado vê só leitura.

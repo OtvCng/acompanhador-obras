@@ -1,0 +1,20 @@
+Você é o terminal TELAS-GESTÃO.
+
+Seu portal de trabalho é "Portal Gestão" (1440x900): use maestri portal navigate/snapshot/screenshot/check para conferir visualmente cada tela que fizer.
+
+Referência visual (SÓ OLHAR as imagens, não copiar código): prints do prya em C:/Users/Otavi/prya-fork/*.png, por exemplo painel-1280.png, painel-kpis-1280.png, projetos-5cards.png, crono-atual.png, curva-s-grafico.png, 01-visao-geral-curva-s.png, v054-dashboard.png, scurve-fases-1.png. Queremos o mesmo estilo (sidebar escura, topbar, cards com semáforo, KPIs, abas), mas com marca neutra "Acompanhador de Obras".
+
+O store ainda é stub (obras = []) e o motor ainda devolve zeros: o terminal Fundação está implementando. Comece pelo que não depende de dados e trate os estados vazios. Quando aparecer "STORE NO AR" na nota, valide tudo com os dados reais.
+
+ENTREGAS:
+1) components/ui/: primitivos estilo shadcn escritos por você (Button, Card, Badge, Tabs via radix, Dialog via radix, Select, Input, Textarea, Table, Progress, Tooltip) + lib/utils.ts (cn) + components/ui/SaudeBadge.tsx (FaixaSaude -> cor e rótulo: verde adiantada/no prazo, amarelo atenção, vermelho atrasada, cinza não iniciada, azul concluída) + lib/format.ts (R$, %, datas dd/mm/aaaa, SPI com vírgula e 2 casas). Faça este item PRIMEIRO e commite logo, porque o Telas-Campo também vai usar.
+2) components/layout/AppLayout.tsx (substitui o provisório), Sidebar (Painel, Obras, Nova obra, Campo, Modelos; Nova obra e Modelos escondidos para encarregado) e Topbar com: título da página, seletor de usuário simulado (lista usuarios e mostra o perfil), campo "Hoje" (data de referência do store) e botão "Restaurar dados de exemplo" (com Dialog de confirmação). Responsivo: em tela estreita a sidebar vira menu.
+3) pages/PainelPage.tsx: KPIs do portfólio visível (obras ativas, % físico médio ponderado, SPI do portfólio, nº de atrasadas, nº com alerta Caixa > 10 pp, valor agregado x planejado em R$ só para quem pode ver valores), distribuição por faixa de saúde, lista "Obras que precisam de atenção" e cards por obra (nome, tipo, cidade, etapa atual via etapasEmAndamento, % realizado x planejado com barra dupla, SPI, desvio em pp, fim previsto, badge de saúde, ícone de alerta Caixa).
+4) pages/ObrasPage.tsx: lista/tabela com filtros (tipo, faixa, status, busca) e ordenação; clique abre o detalhe; botão Nova obra (não aparece para encarregado).
+5) pages/ObraDetalhePage.tsx + pages/obra/**: cabeçalho (nome, tipo, endereço, engenheiro, encarregado, status, baseline vX, saúde) e abas, com a aba atual em ?aba=:
+ (a) Visão geral: indicadores; Curva S com duas séries previsto x realizado e linha "hoje", alternando física (%) e financeira (R$), com a financeira oculta para encarregado; etapas em andamento; alertas (Caixa > 10 pp, etapas fora da faixa, durações NÃO CONFIRMADO).
+ (b) Cronograma: árvore Etapa > Atividade > Local com datas da baseline e atuais, % realizado, % planejado, SPI e um Gantt simples em barras (baseline cinza + atual colorida, linha de hoje). Engenheiro e diretor podem editar datas; se houver baseline, "Replanejar" abre Dialog com justificativa obrigatória, que chama atualizarObra + congelarBaseline(justificativa) e gera nova versão. Mostrar histórico das versões de baseline.
+ (c) Matriz: linhas = atividades por local, colunas = locais (pavimentos/unidades), célula colorida pelo % e pela saúde do item (mostrar o "ciclo" do prédio).
+ (d) Financeiro (oculto para encarregado): por etapa, orçado, %, faixa Caixa com alerta, valor agregado, valor planejado e desvio; previsto x realizado por mês; editar o valor da etapa (atualizarObra, marcando valorEstimado = false).
+ (e) Apontamentos: histórico com data, item/local, de -> para, autor, observação e fotos fake.
+Faça os gráficos com recharts em components/charts/.

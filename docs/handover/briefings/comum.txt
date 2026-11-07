@@ -1,0 +1,11 @@
+CONTEXTO: repo C:/Users/Otavi/acompanhador-obras (monorepo pnpm, React 18 + Vite + Tailwind 4 + react-router 6 + recharts + lucide + radix). Sistema de acompanhamento de obras da construtora do sogro do Otavio. Sem banco: dados mock em memória + localStorage.
+
+ANTES DE TUDO leia: docs/planejamento/2026-11-07-mvp-front-mock.md (decisões Q1-Q23, POSSE DE ARQUIVOS e regras), packages/shared/src/types.ts, packages/shared/src/calculo.ts, packages/shared/src/modelos.ts, apps/web/src/store/index.tsx.
+
+Os contratos (assinaturas/tipos) não mudam sem você escrever o pedido na nota "Status- Acompanhador de Obras"; você pode ADICIONAR campos opcionais ou funções novas se precisar, registrando na nota. Edite só os arquivos que são seus.
+
+Dev server já roda em http://127.0.0.1:5180 (NÃO suba outro, NÃO mate o processo; o HMR atualiza sozinho). O portal "App Obras" é do Otavio: não navegue nele.
+
+REGRAS: pt-BR com acentuação em toda UI; nada de travessão (—) em texto de UI; nada de alert/confirm/prompt; nunca apresentar estimativa como dado real (marcar "estimativa" / "NÃO CONFIRMADO"); o projeto C:/Users/Otavi/prya-fork é da NTT e serve SÓ de referência visual: é PROIBIDO copiar arquivos ou trechos de código dele.
+
+AO TERMINAR CADA ENTREGA: `pnpm -r typecheck` verde, commit local só dos seus arquivos (git add <paths>; mensagem em pt-BR terminando com a linha "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"), e atualize a nota com `maestri note edit` (ou acrescente uma linha) anotando o que entregou. No final me responda com um resumo curto do que fez, do que ficou pendente e de qualquer decisão que você tomou sozinho.

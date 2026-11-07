@@ -1,0 +1,30 @@
+Você é o terminal FUNDAÇÃO.
+
+SUA MISSÃO, nesta ordem (commit a cada item). As telas estão sendo feitas em paralelo em cima dos stubs, então o item 3 destrava todo mundo: chegue nele rápido com o mínimo correto e depois refine.
+
+1) packages/shared/src/calculo.ts: implemente todos os corpos.
+- Dias úteis seg-sex menos feriados nacionais (fixos + Carnaval seg/ter, Sexta-feira Santa, Corpus Christi via Páscoa).
+- planejadoItem = fração linear em dias úteis entre início e fim da BASELINE vigente (0 antes, 1 depois, inclusivo; sem baseline = 0).
+- Indicadores ponderados por valorOrcado (peso = valor/total). SPI = realizado/planejado (null se planejado = 0).
+- Faixa: concluida se status concluida; nao_iniciada se não há baseline ou (realizado = 0 e spi null); senão, com o SPI arredondado a 2 casas: > 1,00 adiantada; >= 0,95 no_prazo; >= 0,85 atencao; senão atrasada.
+- alertaCaixa = |desvioPP| > 10.
+- curvaS: pontos semanais (sextas) de dataInicio até fimPrevisto; previsto pela baseline; realizado reconstruído pelo histórico de apontamentos (percentual vigente de cada item naquela data) e null depois de hoje; valores em R$.
+- etapasForaDaFaixa usa ETAPAS_CAIXA.
+- Testes vitest em packages/shared/src/*.test.ts: dias úteis e feriados, planejado linear, SPI e faixas nos limites (0,95 / 0,85 / 1,00), curva S monotônica.
+
+2) packages/shared/src/modelos.ts:
+- ETAPAS_CAIXA com os 20 itens e faixas da seção 2.1 de C:/Users/Otavi/otavio-vault/projetos/acompanhador-obras/pesquisa/2026-11-07-etapas-por-tipo-de-obra.md (fonte em cada item).
+- MODELOS para os 6 tipos usando as seções 2.2 (pesos Anexo IV), 3 a 7 (micro atividades, sequência, particularidades) e 8 (modelo de dados).
+- Prédio: atividades por pavimento com tiposPavimento coerentes (garagem no subsolo, lojas no térreo comercial etc.); elevador no 7+ e conforme a regra de Brusque no 3-6 (ver pesquisa); ciclo de estrutura 9 dias úteis por pavimento. Geminadas: por unidade, em série. Casa/sobrado/comercial: 'obra' ou pavimentos.
+- Toda duração sem fonte: duracaoConfirmada = false.
+- distribuicaoPadrao = ponto médio das faixas, normalizado para 100 nas etapas ativas.
+- gerarObra: cria locais (Obra toda + pavimentos/unidades); itens por local; distribui orcamentoTotal por etapa (distribuicaoPadrao, valorEstimado = true), por atividade (pesoNaEtapa) e por local (igual entre locais); agenda datas pela rede de precedência (predecessoras no mesmo local; mesma atividade em locais sucessivos em série = linha de balanço: o pavimento n+1 começa aquela atividade quando o n termina); status planejamento; baselines [].
+- congelarBaseline conforme o contrato (v2+ exige justificativa e lança erro sem ela).
+- Testes de gerarObra para cada tipo: soma dos valores = orçamento, pesos da etapa somam 1, nenhuma data em fim de semana ou feriado.
+
+3) apps/web/src/store/index.tsx (implementação) + apps/web/src/data/seed.ts:
+- Usuários fictícios: 1 diretor, 2 engenheiros, 3 encarregados, com nomes claramente fictícios.
+- 6 obras fictícias, uma por tipo, em cidades da região de Brusque, geradas via gerarObra, com baseline congelada (uma com v2 + justificativa) e apontamentos históricos realistas. Em hoje = 2026-11-07, os estados devem variar: uma adiantada, duas no prazo, uma em atenção, uma atrasada (> 10 pp, aciona o alerta Caixa) e uma concluída. Pelo menos uma deve ter valor de etapa editado fora da faixa Caixa.
+- localStorage na chave obras:v1, com versão; se corromper, volta ao seed. Modelos editáveis persistidos em obras:modelos:v1.
+- Implemente todos os métodos do contrato. lancarApontamento atualiza percentual, inicioReal/fimReal e registra o Apontamento com autor = usuário atual. congelarBaseline usa o usuário atual e o hoje do store.
+- Quando o store estiver funcionando, escreva na nota a linha "STORE NO AR" para as telas saberem.
