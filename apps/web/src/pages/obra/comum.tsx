@@ -41,6 +41,23 @@ export function useNomeUsuario(): (id: string | undefined) => string {
   return (id) => usuarios.find((u) => u.id === id)?.nome ?? 'Não definido';
 }
 
+export interface ItemLocalizado {
+  etapa: EtapaObra;
+  atividade: Obra['etapas'][number]['atividades'][number];
+  item: Obra['etapas'][number]['atividades'][number]['itens'][number];
+  local: Obra['locais'][number] | undefined;
+}
+
+/** Índice itemId -> etapa/atividade/item/local. */
+export function indexarItens(obra: Obra): Map<string, ItemLocalizado> {
+  const locais = new Map(obra.locais.map((l) => [l.id, l]));
+  const m = new Map<string, ItemLocalizado>();
+  for (const etapa of obra.etapas)
+    for (const atividade of etapa.atividades)
+      for (const item of atividade.itens) m.set(item.id, { etapa, atividade, item, local: locais.get(item.localId) });
+  return m;
+}
+
 /** Precisa de atenção: atrasada, em atenção ou com alerta Caixa. */
 export function precisaAtencao(r: ResumoObra): boolean {
   return r.ind.faixa === 'atrasada' || r.ind.faixa === 'atencao' || r.ind.alertaCaixa;
