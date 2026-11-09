@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Building2, type LucideIcon } from 'lucide-react';
 import { etapasEmAndamento, fimPrevisto, indicadoresObra, type Indicadores, type Obra, type StatusObra, type EtapaObra, type ISODate } from '@obras/shared';
 import { useObras } from '@/store';
-import { Button, Card } from '@/components/ui';
+import { Button, Card, SAUDE } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
 export const NOMES_STATUS: Record<StatusObra, string> = {
@@ -71,14 +71,7 @@ export function precisaAtencao(r: ResumoObra): boolean {
 
 /** Cor da barra de realizado de acordo com a saúde. */
 export function corBarra(faixa: Indicadores['faixa']): string {
-  return {
-    adiantada: 'bg-saude-verde',
-    no_prazo: 'bg-saude-verde',
-    atencao: 'bg-saude-amarelo',
-    atrasada: 'bg-saude-vermelho',
-    nao_iniciada: 'bg-saude-cinza',
-    concluida: 'bg-saude-azul',
-  }[faixa];
+  return SAUDE[faixa].bg;
 }
 
 export function Kpi({

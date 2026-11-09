@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Activity, AlertTriangle, Building2, CalendarClock, Gauge, Percent, Wallet } from 'lucide-react';
 import { NOMES_TIPO, type FaixaSaude } from '@obras/shared';
 import { useObras, useObrasVisiveis, podeVerValores } from '@/store';
-import { BarraDupla, Card, CardContent, CardDescription, CardHeader, CardTitle, Dica, SaudeBadge, SaudePonto } from '@/components/ui';
+import { BarraDupla, Card, CardContent, CardDescription, CardHeader, CardTitle, Dica, SAUDE, SaudeBadge, SaudePonto, corDesvio } from '@/components/ui';
 import { DistribuicaoSaude } from '@/components/charts';
 import { formatBRLCompacto, formatBRL, formatData, formatPctFracao, formatPP, formatSPI } from '@/lib/format';
 import { Kpi, SemObras, corBarra, precisaAtencao, resumirEtapas, useResumos, type ResumoObra } from './obra/comum';
@@ -110,7 +110,7 @@ export default function PainelPage() {
                       </div>
                       <div className="text-right text-xs">
                         <div className="font-semibold text-gray-900">SPI {formatSPI(r.ind.spi)}</div>
-                        <div className={r.ind.desvioPP < 0 ? 'text-saude-vermelho' : 'text-saude-verde'}>{formatPP(r.ind.desvioPP)}</div>
+                        <div className={corDesvio(r.ind.faixa)}>{formatPP(r.ind.desvioPP)}</div>
                       </div>
                       {r.ind.alertaCaixa && (
                         <Dica texto="Desvio maior que 10 pp (critério Caixa)">
@@ -149,13 +149,7 @@ function CardObra({ r, verValores }: { r: ResumoObra; verValores: boolean }) {
   const { obra, ind } = r;
   return (
     <Link to={`/obras/${obra.id}`} className="group block">
-      <Card className={cn('h-full border-l-4 p-4 transition-shadow group-hover:shadow-md', {
-        'border-l-saude-verde': ind.faixa === 'adiantada' || ind.faixa === 'no_prazo',
-        'border-l-saude-amarelo': ind.faixa === 'atencao',
-        'border-l-saude-vermelho': ind.faixa === 'atrasada',
-        'border-l-saude-cinza': ind.faixa === 'nao_iniciada',
-        'border-l-saude-azul': ind.faixa === 'concluida',
-      })}>
+      <Card className={cn('h-full border-l-4 p-4 transition-shadow group-hover:shadow-md', SAUDE[ind.faixa].borderL)}>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="truncate font-semibold text-gray-900">{obra.nome}</div>
@@ -195,7 +189,7 @@ function CardObra({ r, verValores }: { r: ResumoObra; verValores: boolean }) {
           </div>
           <div>
             <div className="text-muted">Desvio</div>
-            <div className={cn('font-semibold', ind.desvioPP < -0.05 ? 'text-saude-vermelho' : 'text-gray-900')}>{formatPP(ind.desvioPP)}</div>
+            <div className={cn('font-semibold', corDesvio(ind.faixa))}>{formatPP(ind.desvioPP)}</div>
           </div>
           <div>
             <div className="text-muted">Fim previsto</div>

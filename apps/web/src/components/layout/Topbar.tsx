@@ -35,8 +35,12 @@ export function Topbar({ titulo, onAbrirMenu }: { titulo: string; onAbrirMenu: (
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-surface/95 px-4 backdrop-blur lg:px-6">
-      <button className="cursor-pointer rounded-md p-1.5 text-gray-700 hover:bg-gray-100 lg:hidden" onClick={onAbrirMenu} aria-label="Abrir menu">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border bg-surface/95 px-3 backdrop-blur sm:gap-3 sm:px-4 lg:px-6">
+      <button
+        className="-ml-1.5 flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-gray-700 hover:bg-gray-100 lg:hidden"
+        onClick={onAbrirMenu}
+        aria-label="Abrir menu"
+      >
         <Menu className="size-5" />
       </button>
       <h1 className="min-w-0 truncate text-base font-semibold text-gray-900 lg:text-lg">{titulo}</h1>
@@ -54,10 +58,16 @@ export function Topbar({ titulo, onAbrirMenu }: { titulo: string; onAbrirMenu: (
           />
         </label>
 
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <Select value={usuarioAtual.id} onValueChange={setUsuarioAtual}>
-            <SelectTrigger className="h-8 w-40 text-xs sm:w-52" aria-label="Usuário simulado">
-              <SelectValue placeholder="Usuário" />
+            {/* Celular: alvo de 44 px e nome + perfil em duas linhas, sem corte no meio do perfil. */}
+            <SelectTrigger className="h-11 w-36 text-xs sm:h-8 sm:w-48" aria-label="Usuário simulado">
+              <SelectValue placeholder="Usuário">
+                <span className="flex min-w-0 flex-col text-left leading-tight">
+                  <span className="truncate">{usuarioAtual.nome}</span>
+                  <span className="text-[11px] text-muted sm:hidden">{nomePerfil(usuarioAtual.perfil)}</span>
+                </span>
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {usuarios.map((u) => (
@@ -72,7 +82,14 @@ export function Topbar({ titulo, onAbrirMenu }: { titulo: string; onAbrirMenu: (
           </Badge>
         </div>
 
-        <Button variant="outline" size="sm" onClick={() => setConfirmar(true)} title="Restaurar dados de exemplo">
+        <Button
+          variant="outline"
+          size="sm"
+          className="size-11 shrink-0 px-0 sm:h-8 sm:w-auto sm:px-3"
+          onClick={() => setConfirmar(true)}
+          title="Restaurar dados de exemplo"
+          aria-label="Restaurar dados de exemplo"
+        >
           <RotateCcw />
           <span className="hidden xl:inline">Restaurar dados de exemplo</span>
         </Button>

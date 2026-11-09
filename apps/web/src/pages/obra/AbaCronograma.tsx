@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ChevronDown, ChevronRight, History, Lock, Pencil, Save, X } from 'lucide-react';
 import { baselineVigente, faixaPorSpi, indicadoresEtapa, planejadoItem, type Atividade, type FaixaSaude, type ISODate, type ItemAtividade, type Obra } from '@obras/shared';
@@ -62,6 +62,16 @@ export function AbaCronograma({ obra }: { obra: Obra }) {
   const [justificativa, setJustificativa] = useState('');
 
   const locais = useMemo(() => new Map(obra.locais.map((l) => [l.id, l])), [obra.locais]);
+
+  // Ao montar (e ao trocar a data de referência), rola o Gantt para a linha "hoje" ficar visível.
+  const rolagemRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const caixa = rolagemRef.current;
+    const marca = caixa?.querySelector<HTMLElement>('[data-hoje]');
+    if (!caixa || !marca || caixa.scrollWidth <= caixa.clientWidth) return;
+    const x = marca.getBoundingClientRect().left - caixa.getBoundingClientRect().left + caixa.scrollLeft;
+    caixa.scrollLeft = Math.max(0, x - caixa.clientWidth * 0.7);
+  }, [hoje, obra.id]);
 
   const datasAtuais = (it: ItemAtividade): Datas => rascunho[it.id] ?? { inicio: it.inicioPlanejado, fim: it.fimPlanejado };
   const datasBase = (it: ItemAtividade): Datas | null => {
@@ -263,8 +273,8 @@ export function AbaCronograma({ obra }: { obra: Obra }) {
     return (
       <>
         <tr className="border-b border-border hover:bg-gray-50/60">
-          <td className="py-1 pl-8 pr-2">
-            <div className="flex items-center gap-1.5">
+          <td className="max-w-[300px] py-1 pl-8 pr-2">
+            <div className="flex min-w-0 items-center gap-1.5">
               {!unico ? (
                 <button className="cursor-pointer rounded p-0.5 text-muted hover:bg-gray-100" onClick={() => setAbertas((s) => alternar(s, a.id))} aria-label={aberta ? 'Recolher' : 'Expandir'}>
                   {aberta ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
@@ -272,20 +282,24 @@ export function AbaCronograma({ obra }: { obra: Obra }) {
               ) : (
                 <span className="w-4.5" />
               )}
-              <span className="text-xs text-muted">{a.codigo}</span>
-              <span className="truncate text-sm text-gray-900">{a.nome}</span>
-              {!unico && <span className="text-xs text-muted">({a.itens.length} locais)</span>}
-              {unico && locais.get(unico.localId)?.tipo !== 'obra' && <span className="text-xs text-muted">· {locais.get(unico.localId)?.nome}</span>}
+              <span className="shrink-0 text-xs text-muted">{a.codigo}</span>
+              <span className="min-w-0 truncate text-sm text-gray-900" title={`${a.codigo} ${a.nome}${unico && locais.get(unico.localId)?.tipo !== 'obra' ? ` · ${locais.get(unico.localId)?.nome}` : ''}`}>{a.nome}</span>
+              {!unico && (
+                <span className="shrink-0 text-xs text-muted" title={`${a.itens.length} locais`}>
+                  ({a.itens.length})
+                </span>
+              )}
+              {unico && locais.get(unico.localId)?.tipo !== 'obra' && <span className="shrink-0 text-xs text-muted">· {locais.get(unico.localId)?.nome}</span>}
               {!a.duracaoConfirmada && (
                 <Dica texto="Duração estimada pelo modelo, ainda não validada">
-                  <Badge variant="estimativa" className="px-1.5 py-0 text-[10px]">NÃO CONFIRMADO</Badge>
+                  <Badge variant="estimativa" className="shrink-0 px-1.5 py-0 text-[10px]">NÃO CONFIRMADO</Badge>
                 </Dica>
               )}
             </div>
           </td>
           {celulasDatas(unico ? { ...g, base: datasBase(unico) } : g, unico)}
           {celulasNumeros(g)}
-          <td className="min-w-72 px-2">
+          <td className="min-w-[420px] px-2">
             {barraGantt(g.base, unico ? datasAtuais(unico) : g.atual, g.faixa)}
           </td>
         </tr>
@@ -370,11 +384,11 @@ export function AbaCronograma({ obra }: { obra: Obra }) {
           {semItens ? (
             <div className="px-5 py-8 text-center text-sm text-muted">Esta obra ainda não tem atividades no cronograma.</div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" ref={rolagemRef}>
               <table className="w-full min-w-[1100px] text-sm">
                 <thead>
                   <tr className="border-b border-border text-left text-xs font-semibold text-muted">
-                    <th className="px-5 py-2">Etapa / atividade / local</th>
+                    <th className="w-[300px] px-5 py-2">Etapa / atividade / local</th>
                     <th className="px-2 py-2">Baseline</th>
                     <th className="px-2 py-2">Atual</th>
                     <th className="px-2 py-2 text-right">Real.</th>
@@ -388,7 +402,7 @@ export function AbaCronograma({ obra }: { obra: Obra }) {
                           </span>
                         ))}
                         {posHoje != null && (
-                          <span className="absolute -top-0.5 -translate-x-1/2 rounded bg-gray-900 px-1 text-[10px] text-white" style={{ left: `${posHoje}%` }}>
+                          <span data-hoje className="absolute -top-0.5 -translate-x-1/2 rounded bg-gray-900 px-1 text-[10px] text-white" style={{ left: `${posHoje}%` }}>
                             hoje
                           </span>
                         )}
@@ -406,10 +420,16 @@ export function AbaCronograma({ obra }: { obra: Obra }) {
                     return (
                       <Fragment key={e.codigo}>
                         <tr className="border-b border-border bg-gray-50">
-                          <td className="py-1.5 pl-3 pr-2">
-                            <button className="flex cursor-pointer items-center gap-1.5 font-semibold text-gray-900" onClick={() => setFechadas((s) => alternar(s, e.codigo))}>
-                              {aberta ? <ChevronDown className="size-4 text-muted" /> : <ChevronRight className="size-4 text-muted" />}
-                              {e.codigo}. {e.nome}
+                          <td className="max-w-[300px] py-1.5 pl-3 pr-2">
+                            <button
+                              className="flex w-full min-w-0 cursor-pointer items-center gap-1.5 text-left font-semibold text-gray-900"
+                              onClick={() => setFechadas((s) => alternar(s, e.codigo))}
+                              title={`${e.codigo}. ${e.nome}`}
+                            >
+                              {aberta ? <ChevronDown className="size-4 shrink-0 text-muted" /> : <ChevronRight className="size-4 shrink-0 text-muted" />}
+                              <span className="min-w-0 truncate">
+                                {e.codigo}. {e.nome}
+                              </span>
                             </button>
                           </td>
                           <td className="whitespace-nowrap px-2 text-xs text-muted">{g.base ? `${formatDiaMes(g.base.inicio)} a ${formatDiaMes(g.base.fim)}` : 'sem baseline'}</td>

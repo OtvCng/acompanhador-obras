@@ -9,6 +9,7 @@ export const badgeVariants = cva('inline-flex items-center gap-1 rounded-full bo
       secondary: 'border-transparent bg-gray-100 text-gray-700',
       outline: 'border-border text-gray-700',
       verde: 'border-transparent bg-saude-verde/10 text-saude-verde',
+      teal: 'border-transparent bg-[#0f766e]/10 text-[#0f766e]',
       amarelo: 'border-transparent bg-saude-amarelo/10 text-saude-amarelo',
       vermelho: 'border-transparent bg-saude-vermelho/10 text-saude-vermelho',
       cinza: 'border-transparent bg-gray-100 text-saude-cinza',

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, HardHat, MapPin, UserRound } from 'lucide-react';
 import { NOMES_TIPO, type Indicadores, type Obra } from '@obras/shared';
-import { Badge, Card, Dica, SaudeBadge } from '@/components/ui';
+import { Badge, Card, Dica, SAUDE, SaudeBadge } from '@/components/ui';
 import { formatData } from '@/lib/format';
 import { NOMES_STATUS, useNomeUsuario } from './comum';
 import { cn } from '@/lib/utils';
@@ -10,13 +10,7 @@ export function Cabecalho({ obra, ind }: { obra: Obra; ind: Indicadores }) {
   const nome = useNomeUsuario();
   const base = obra.baselines.at(-1);
   return (
-    <Card className={cn('border-b-4 p-4 lg:p-5', {
-      'border-b-saude-verde': ind.faixa === 'adiantada' || ind.faixa === 'no_prazo',
-      'border-b-saude-amarelo': ind.faixa === 'atencao',
-      'border-b-saude-vermelho': ind.faixa === 'atrasada',
-      'border-b-saude-cinza': ind.faixa === 'nao_iniciada',
-      'border-b-saude-azul': ind.faixa === 'concluida',
-    })}>
+    <Card className={cn('border-b-4 p-4 lg:p-5', SAUDE[ind.faixa].borderB)}>
       <div className="flex flex-wrap items-start gap-3">
         <Link to="/obras" className="mt-0.5 rounded-md p-1 text-muted hover:bg-gray-100 hover:text-gray-900" aria-label="Voltar para obras">
           <ArrowLeft className="size-5" />
@@ -25,7 +19,10 @@ export function Cabecalho({ obra, ind }: { obra: Obra; ind: Indicadores }) {
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-lg font-semibold text-gray-900">{obra.nome}</h2>
             <SaudeBadge faixa={ind.faixa} />
-            <Badge variant="secondary">{NOMES_STATUS[obra.status]}</Badge>
+            {/* Obra com baseline mas início no futuro: "Não iniciada" já diz tudo; "Em andamento" ao lado confunde. "Concluída" também não se repete. */}
+            {!(ind.faixa === 'nao_iniciada' && obra.status === 'em_andamento') && !(ind.faixa === 'concluida' && obra.status === 'concluida') && (
+              <Badge variant="secondary">{NOMES_STATUS[obra.status]}</Badge>
+            )}
             {base ? (
               <Dica texto={`Congelada em ${formatData(base.congeladaEm)}${base.justificativa ? `: ${base.justificativa}` : ''}`}>
                 <Badge variant="outline">Baseline v{base.versao}</Badge>

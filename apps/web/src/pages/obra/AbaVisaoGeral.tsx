@@ -51,7 +51,7 @@ export function AbaVisaoGeral({ obra, ind }: { obra: Obra; ind: Indicadores }) {
         tom: 'amarelo',
         icone: AlertTriangle,
         titulo: `${nomeEtapa(f.codigo)}: ${formatPct(f.percentual)} do orçamento`,
-        detalhe: `Fora da faixa de referência Caixa (${formatPct(f.faixaMin, 0)} a ${formatPct(f.faixaMax, 0)}).`,
+        detalhe: `Fora da faixa de referência Caixa (${formatPct(f.faixaMin, 1)} a ${formatPct(f.faixaMax, 1)}).`,
       });
   if (naoConfirmadas.length)
     alertas.push({

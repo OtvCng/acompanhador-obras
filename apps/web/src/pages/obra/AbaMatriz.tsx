@@ -61,18 +61,24 @@ export function AbaMatriz({ obra }: { obra: Obra }) {
   if (dados.colunas.length === 0 || dados.linhas.length === 0) {
     return (
       <Card className="p-8 text-center text-sm text-muted">
-        Esta obra não é dividida em pavimentos ou unidades, então não há matriz por local. Veja o andamento na aba Cronograma.
+        Esta obra é executada como um local único (sem pavimentos nem unidades), então não há matriz por local. Veja o andamento na aba Cronograma.
       </Card>
     );
   }
 
+  const porUnidade = dados.colunas.some((c) => c.tipo === 'unidade');
+  const titulo = porUnidade ? 'Matriz atividade x unidade' : 'Matriz atividade x pavimento';
+  const leitura = porUnidade
+    ? 'A leitura em diagonal mostra as equipes passando de casa em casa.'
+    : 'A leitura em diagonal mostra o ciclo da obra subindo pavimento a pavimento.';
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Matriz atividade x local</CardTitle>
+        <CardTitle>{titulo}</CardTitle>
         <CardDescription>
-          Cada célula é uma atividade num local: número = % realizado; cor = saúde do item; intensidade = quanto já foi feito. A leitura em diagonal mostra o ciclo
-          do prédio subindo pavimento a pavimento.
+          Cada célula é uma atividade {porUnidade ? 'numa unidade' : 'num pavimento'}: número = % realizado; cor = saúde do item; intensidade = quanto já foi feito.{' '}
+          {leitura}
         </CardDescription>
         <div className="flex flex-wrap gap-3 pt-1">
           {ORDEM_FAIXAS.map((f) => (
@@ -142,7 +148,7 @@ export function AbaMatriz({ obra }: { obra: Obra }) {
                 );
               })}
               <tr>
-                <td className="sticky left-0 z-10 bg-surface px-5 pt-3 font-semibold text-muted">Ciclo do local ({base ? 'baseline' : 'datas atuais'})</td>
+                <td className="sticky left-0 z-10 bg-surface px-5 pt-3 font-semibold text-muted">Ciclo {porUnidade ? 'da unidade' : 'do pavimento'} ({base ? 'baseline' : 'datas atuais'})</td>
                 {dados.colunas.map((l) => {
                   const c = dados.ciclo.get(l.id);
                   return (

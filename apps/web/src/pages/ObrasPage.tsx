@@ -12,6 +12,7 @@ import {
   SaudeBadge,
   SAUDE,
   ORDEM_FAIXAS,
+  corDesvio,
   Select,
   SelectContent,
   SelectItem,
@@ -227,7 +228,7 @@ export default function ObrasPage() {
                     <BarraDupla realizado={r.ind.realizado * 100} planejado={r.ind.planejado * 100} corRealizado={corBarra(r.ind.faixa)} />
                   </TableCell>
                   <TableCell className="font-semibold text-gray-900">{formatSPI(r.ind.spi)}</TableCell>
-                  <TableCell className={cn('whitespace-nowrap', r.ind.desvioPP < -0.05 ? 'text-saude-vermelho' : 'text-gray-700')}>
+                  <TableCell className={cn('whitespace-nowrap', corDesvio(r.ind.faixa))}>
                     <span className="inline-flex items-center gap-1">
                       {formatPP(r.ind.desvioPP)}
                       {r.ind.alertaCaixa && (

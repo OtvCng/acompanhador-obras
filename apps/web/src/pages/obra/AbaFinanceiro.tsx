@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
   Dica,
+  corDesvio,
   Input,
   Label,
   Table,
@@ -122,7 +123,7 @@ export function AbaFinanceiro({ obra }: { obra: Obra }) {
                     <TableCell className="whitespace-nowrap">
                       {ref && ref.faixaMin != null && ref.faixaMax != null ? (
                         <span className={cn('inline-flex items-center gap-1', foraFaixa ? 'font-medium text-saude-amarelo' : 'text-gray-700')}>
-                          {formatPct(ref.faixaMin, 0)} a {formatPct(ref.faixaMax, 0)}
+                          {formatPct(ref.faixaMin, 1)} a {formatPct(ref.faixaMax, 1)}
                           {foraFaixa && (
                             <Dica texto="Percentual fora da faixa de referência Caixa">
                               <AlertTriangle className="size-3.5" />
@@ -135,7 +136,7 @@ export function AbaFinanceiro({ obra }: { obra: Obra }) {
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-right tabular-nums">{formatBRL(i.valorAgregado)}</TableCell>
                     <TableCell className="whitespace-nowrap text-right tabular-nums text-muted">{formatBRL(i.valorPlanejado)}</TableCell>
-                    <TableCell className={cn('whitespace-nowrap text-right tabular-nums', desvio < -0.005 ? 'text-saude-vermelho' : 'text-gray-700')}>
+                    <TableCell className={cn('whitespace-nowrap text-right tabular-nums', corDesvio(i.faixa))}>
                       <span className="inline-flex items-center gap-1">
                         {formatBRL(desvio)}
                         {i.alertaCaixa && (
@@ -160,7 +161,7 @@ export function AbaFinanceiro({ obra }: { obra: Obra }) {
                 <TableCell />
                 <TableCell className="whitespace-nowrap text-right tabular-nums">{formatBRL(ind.valorAgregado)}</TableCell>
                 <TableCell className="whitespace-nowrap text-right tabular-nums">{formatBRL(ind.valorPlanejado)}</TableCell>
-                <TableCell className={cn('whitespace-nowrap text-right tabular-nums', ind.valorAgregado - ind.valorPlanejado < -0.005 && 'text-saude-vermelho')}>
+                <TableCell className={cn('whitespace-nowrap text-right tabular-nums', corDesvio(ind.faixa))}>
                   {formatBRL(ind.valorAgregado - ind.valorPlanejado)}
                 </TableCell>
                 <TableCell />
