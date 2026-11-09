@@ -33,7 +33,7 @@ export function diaDaSemana(data: ISODate): number {
   return new Date(paraMs(data)).getUTCDay();
 }
 
-/** Domingo de Páscoa (algoritmo de Meeus/Jones/Butcher). */
+/** Domingo de Páscoa: algoritmo público de Meeus/Jones/Butcher (J. Meeus, "Astronomical Algorithms", 1991), na forma canônica. */
 export function pascoa(ano: number): ISODate {
   const a = ano % 19;
   const b = Math.floor(ano / 100);
@@ -55,15 +55,22 @@ export function pascoa(ano: number): ISODate {
 const FIXOS = ['01-01', '04-21', '05-01', '09-07', '10-12', '11-02', '11-15', '11-20', '12-25'];
 const cacheFeriados = new Map<number, Set<ISODate>>();
 
-/** Feriados nacionais fixos + móveis (Páscoa) do ano. */
+/**
+ * Feriados nacionais fixos + móveis (Páscoa) do ano.
+ *
+ * DECISÃO NÃO CONFIRMADA (revisão 2026-11-09, achado #15): Carnaval (segunda e terça) NÃO é feriado nacional
+ * em lei, é ponto facultativo. Entra aqui como dia não útil porque é o costume prático em obra. Falta confirmar
+ * com a construtora se ela para no Carnaval. Corpus Christi está na mesma situação (ponto facultativo federal,
+ * feriado municipal em muitas cidades) e entrou pelo briefing da Fundação. Para mudar, tire as linhas abaixo.
+ */
 export function feriadosNacionais(ano: number): ISODate[] {
   const p = pascoa(ano);
   const fixos = FIXOS.map((md) => `${ano}-${md}`);
   const moveis = [
-    addDias(p, -48), // Carnaval (segunda)
-    addDias(p, -47), // Carnaval (terça)
+    addDias(p, -48), // Carnaval (segunda): ponto facultativo, NÃO CONFIRMADO
+    addDias(p, -47), // Carnaval (terça): ponto facultativo, NÃO CONFIRMADO
     addDias(p, -2), // Sexta-feira Santa
-    addDias(p, 60), // Corpus Christi
+    addDias(p, 60), // Corpus Christi: ponto facultativo federal, NÃO CONFIRMADO
   ];
   return [...fixos, ...moveis].sort();
 }

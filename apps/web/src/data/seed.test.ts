@@ -27,10 +27,21 @@ describe('seed', () => {
     const atrasada = obras.find((o) => ind[o.tipo].faixa === 'atrasada')!;
     expect(ind[atrasada.tipo].desvioPP).toBeLessThan(-10);
     expect(ind[atrasada.tipo].alertaCaixa).toBe(true);
+    // só a atrasada aciona o alerta Caixa (o caso didático não se mistura com os outros)
+    expect(obras.filter((o) => ind[o.tipo].alertaCaixa).map((o) => o.tipo)).toEqual([atrasada.tipo]);
   });
 
-  it('pelo menos uma etapa fora da faixa Caixa', () => {
-    expect(obras.some((o) => etapasForaDaFaixa(o).length > 0)).toBe(true);
+  it('só o galpão tem etapa fora da faixa Caixa, e é uma só (Serviços preliminares, total maior)', () => {
+    for (const o of obras) {
+      const fora = etapasForaDaFaixa(o).map((f) => f.codigo);
+      expect(fora, o.tipo).toEqual(o.tipo === 'comercial' ? [1] : []);
+    }
+    const galpao = obras.find((o) => o.tipo === 'comercial')!;
+    expect(galpao.orcamentoTotal).toBeGreaterThan(2_100_000);
+    expect(galpao.etapas.find((e) => e.codigo === 1)!.valorEstimado).toBe(false);
+    const spi = ind.comercial.spi!;
+    expect(spi).toBeGreaterThanOrEqual(0.85);
+    expect(spi).toBeLessThan(0.945);
   });
 
   it('usuários: 1 diretor, 2 engenheiros, 3 encarregados, e cada obra aponta para eles', () => {

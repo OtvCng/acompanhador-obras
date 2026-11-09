@@ -37,7 +37,9 @@ const Ctx = createContext<ObrasStore | null>(null);
 // ---------------------------------------------------------------------------
 const CHAVE_OBRAS = 'obras:v1';
 const CHAVE_MODELOS = 'obras:modelos:v1';
-const VERSAO = 1;
+/** Versão do estado salvo em obras:v1. Subir quando o seed ou o formato mudar: quem tem versão antiga volta ao seed. */
+const VERSAO = 2; // 2 = seed do galpão com uma etapa só fora da faixa (revisão 2026-11-09, achado #3)
+const VERSAO_MODELOS = 1;
 
 interface EstadoSalvo { versao: number; obras: Obra[]; usuarioAtualId: string; hoje: ISODate }
 interface ModelosSalvos { versao: number; modelos: Record<TipoObra, ModeloObra> }
@@ -72,7 +74,7 @@ function estadoInicial(): EstadoSalvo {
 
 function modelosIniciais(): Record<TipoObra, ModeloObra> {
   const s = ler<ModelosSalvos>(CHAVE_MODELOS);
-  if (s && s.versao === VERSAO && s.modelos && TIPOS.every((t) => s.modelos[t] && Array.isArray(s.modelos[t].atividades))) {
+  if (s && s.versao === VERSAO_MODELOS && s.modelos && TIPOS.every((t) => s.modelos[t] && Array.isArray(s.modelos[t].atividades))) {
     return s.modelos;
   }
   return copiaModelos();
@@ -92,7 +94,7 @@ export function ObrasProvider({ children }: { children: ReactNode }) {
   ref.current = estado;
 
   useEffect(() => { gravar(CHAVE_OBRAS, estado); }, [estado]);
-  useEffect(() => { gravar(CHAVE_MODELOS, { versao: VERSAO, modelos } satisfies ModelosSalvos); }, [modelos]);
+  useEffect(() => { gravar(CHAVE_MODELOS, { versao: VERSAO_MODELOS, modelos } satisfies ModelosSalvos); }, [modelos]);
 
   const usuarioAtual = USUARIOS.find((u) => u.id === estado.usuarioAtualId) ?? USUARIOS[0];
 

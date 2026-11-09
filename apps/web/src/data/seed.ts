@@ -202,16 +202,23 @@ export function criarSeed(hoje: ISODate = HOJE_SEED): Obra[] {
     obras.push(o);
   }
 
-  // 6) Comercial: ATENÇÃO, com supraestrutura editada fora da faixa Caixa (estrutura metálica)
+  // 6) Comercial: ATENÇÃO, com Serviços preliminares editados para 5,5% (terraplenagem e PPCI do galpão),
+  //    acima da faixa Caixa (1,13 a 3,97%). Editado com manterTotal = false: o orçamento total sobe e as outras
+  //    etapas não mudam de valor, então só esta etapa fica fora da faixa. A supraestrutura não serve para o
+  //    exemplo: qualquer valor acima de 17,67% empurra as etapas 16, 17 e 18 (faixas estreitas) abaixo do mínimo.
   {
     let o = gerarObra(base({
       nome: 'Galpão Comercial Exemplo', tipo: 'comercial', endereco: 'Rodovia Fictícia, km 12',
       cidade: 'São João Batista', areaM2: 1_200, dataInicio: '2026-06-01', orcamentoTotal: 2_100_000,
       engenheiroId: ENG_BRUNO, encarregadoId: ENC_LUCIA,
     }), 'obra-comercial');
-    o = ajustarValorEtapa(o, 3, 2_100_000 * 0.32);
+    {
+      const alvo = 0.055; // participação final da etapa 1 no novo total
+      const atual = o.etapas.find((e) => e.codigo === 1)!.valorOrcado;
+      o = ajustarValorEtapa(o, 1, (alvo * (o.orcamentoTotal - atual)) / (1 - alvo), false);
+    }
     o = congelarBaseline(o, diretor, '2026-05-29');
-    o = simular(o, { k: 1.05, hoje, semente: 66 });
+    o = simular(o, { k: 1.045, hoje, semente: 66 });
     obras.push(o);
   }
 

@@ -20,7 +20,7 @@ Validar com o Otavio (e depois com o sogro) o formato do acompanhamento de obras
 | Q6 | Peso da atividade = participação no orçamento |
 | Q7 | Realizado financeiro = valor agregado (gastos reais na fase 2) |
 | Q8 | Baseline congelada (v1); replanejar gera v2+ com justificativa; atraso contra a baseline vigente |
-| Q9 | Dias úteis seg-sex menos feriados nacionais |
+| Q9 | Dias úteis seg-sex menos feriados nacionais. Carnaval (seg e ter) e Corpus Christi também contam como dia não útil, mas são ponto facultativo, não feriado em lei: decisão prática, NÃO CONFIRMADA, pendente de confirmar com a construtora (revisão 2026-11-09, #15) |
 | Q10 | Pavimentos tipados (garagem, térreo comercial, tipo, cobertura...) |
 | Q11 | Apontamento: item + %, data, observação e foto (fake) opcionais |
 | Q12 | Telas: Painel, Obras, Detalhe (Visão geral, Cronograma, Matriz, Financeiro, Apontamentos), Nova obra, Campo (mobile), Modelos |
