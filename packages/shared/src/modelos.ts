@@ -123,7 +123,7 @@ function residencial(kind: 'casa' | 'geminadas' | 'sobrado'): ModeloAtividade[] 
     flags: string, fonte?: string,
   ) => {
     const porLocal = (gem && flags.includes('u')) || (sob && flags.includes('p'));
-    const fator = !porLocal ? 1 : gem ? 0.7 : 0.6;
+    const fator = !porLocal ? 1 : gem ? 0.7 : 0.8;
     return at(codigo, nome, etapa, peso, Math.max(1, Math.round(durCasa * fator)), preds, { porLocal, fonte });
   };
   const banheiros = sob ? [0.35, 0.65] : [0.45, 0.55];
