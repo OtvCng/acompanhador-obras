@@ -58,6 +58,12 @@ export function indexarItens(obra: Obra): Map<string, ItemLocalizado> {
   return m;
 }
 
+/** "Supraestrutura, Esquadrias e mais 3". */
+export function resumirEtapas(etapas: EtapaObra[], max = 2): string {
+  if (etapas.length <= max) return etapas.map((e) => e.nome).join(', ');
+  return `${etapas.slice(0, max).map((e) => e.nome).join(', ')} e mais ${etapas.length - max}`;
+}
+
 /** Precisa de atenção: atrasada, em atenção ou com alerta Caixa. */
 export function precisaAtencao(r: ResumoObra): boolean {
   return r.ind.faixa === 'atrasada' || r.ind.faixa === 'atencao' || r.ind.alertaCaixa;

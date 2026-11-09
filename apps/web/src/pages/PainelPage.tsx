@@ -6,7 +6,7 @@ import { useObras, useObrasVisiveis, podeVerValores } from '@/store';
 import { BarraDupla, Card, CardContent, CardDescription, CardHeader, CardTitle, Dica, SaudeBadge, SaudePonto } from '@/components/ui';
 import { DistribuicaoSaude } from '@/components/charts';
 import { formatBRLCompacto, formatBRL, formatData, formatPctFracao, formatPP, formatSPI } from '@/lib/format';
-import { Kpi, SemObras, corBarra, precisaAtencao, useResumos, type ResumoObra } from './obra/comum';
+import { Kpi, SemObras, corBarra, precisaAtencao, resumirEtapas, useResumos, type ResumoObra } from './obra/comum';
 import { cn } from '@/lib/utils';
 
 export default function PainelPage() {
@@ -76,7 +76,7 @@ export default function PainelPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-5">
-        <Card className="lg:col-span-2">
+        <Card className="min-w-0 lg:col-span-2">
           <CardHeader>
             <CardTitle>Distribuição por saúde</CardTitle>
             <CardDescription>Clique numa faixa para filtrar os cards abaixo.</CardDescription>
@@ -86,7 +86,7 @@ export default function PainelPage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-3">
+        <Card className="min-w-0 lg:col-span-3">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Activity className="size-4 text-saude-vermelho" /> Obras que precisam de atenção
@@ -105,7 +105,7 @@ export default function PainelPage() {
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium text-gray-900">{r.obra.nome}</div>
                         <div className="truncate text-xs text-muted">
-                          {r.etapasAtuais.map((e) => e.nome).join(', ') || 'Sem etapa em andamento'}
+                          {resumirEtapas(r.etapasAtuais) || 'Sem etapa em andamento'}
                         </div>
                       </div>
                       <div className="text-right text-xs">
@@ -175,7 +175,7 @@ function CardObra({ r, verValores }: { r: ResumoObra; verValores: boolean }) {
 
         <div className="mt-3 text-xs text-muted">
           Etapa atual:{' '}
-          <span className="text-gray-800">{r.etapasAtuais.map((e) => e.nome).join(', ') || (obra.baselines.length ? 'nenhuma em andamento' : 'sem baseline')}</span>
+          <span className="text-gray-800">{resumirEtapas(r.etapasAtuais) || (obra.baselines.length ? 'nenhuma em andamento' : 'sem baseline')}</span>
         </div>
 
         <div className="mt-3 space-y-1.5">

@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
 import { ArrowRight, Camera, Search } from 'lucide-react';
 import type { Obra } from '@obras/shared';
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
 import { formatData, formatPct } from '@/lib/format';
 import { indexarItens, useNomeUsuario } from './comum';
 
 export function AbaApontamentos({ obra }: { obra: Obra }) {
   const nome = useNomeUsuario();
   const [busca, setBusca] = useState('');
+  const [limite, setLimite] = useState(50);
   const idx = useMemo(() => indexarItens(obra), [obra]);
 
   const lista = useMemo(() => {
@@ -59,7 +60,7 @@ export function AbaApontamentos({ obra }: { obra: Obra }) {
                   </TableCell>
                 </TableRow>
               )}
-              {lista.map(({ a, loc }) => (
+              {lista.slice(0, limite).map(({ a, loc }) => (
                 <TableRow key={a.id}>
                   <TableCell className="whitespace-nowrap pl-5 text-gray-700">{formatData(a.data)}</TableCell>
                   <TableCell>
@@ -103,6 +104,14 @@ export function AbaApontamentos({ obra }: { obra: Obra }) {
               ))}
             </TableBody>
           </Table>
+        )}
+        {lista.length > limite && (
+          <div className="flex items-center justify-center gap-3 pt-3 text-xs text-muted">
+            Mostrando {limite} de {lista.length}
+            <Button variant="outline" size="sm" onClick={() => setLimite((l) => l + 50)}>
+              Mostrar mais
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>
