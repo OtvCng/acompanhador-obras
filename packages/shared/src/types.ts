@@ -81,6 +81,11 @@ export interface ModeloAtividade {
   /** false = duração estimada, NÃO CONFIRMADO (Q20). */
   duracaoConfirmada: boolean;
   fonte?: string;
+  /**
+   * (Adicionado pela Fundação) Só gera a atividade se a obra tiver pelo menos este nº de pavimentos
+   * (contando todos menos subsolo e casa de máquinas). Ex.: elevador no prédio 3-6 = 5 (Brusque, LC 417/2024, art. 118).
+   */
+  minPavimentos?: number;
 }
 
 export interface ModeloObra {
