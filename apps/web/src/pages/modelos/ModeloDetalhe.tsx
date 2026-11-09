@@ -6,6 +6,7 @@ import { ETAPAS_CAIXA, MODELOS, NOMES_TIPO, type ModeloAtividade, type ModeloObr
 import { useObras } from '@/store';
 import { Aviso, Botao, Card, DialogoConfirmar, EstadoVazio, Selo, SeloEstimativa, SeloNaoConfirmado, cn } from '@/components/campo/ui';
 import EntradaNumero from '@/components/campo/EntradaNumero';
+import Fonte from '@/components/campo/Fonte';
 import { NOMES_PAVIMENTO, formatarPct } from '@/components/campo/formatos';
 import { etapasComPesoInvalido, modeloFoiEditado, normalizarEtapa, somaPesosPorEtapa } from './regras';
 
@@ -86,7 +87,7 @@ export default function ModeloDetalhe({ tipo }: { tipo: TipoObra }) {
               <Selo>{DESDOBRAMENTO[m.desdobramento]}</Selo>
               <Selo>{m.etapasAtivas.length} etapas ativas</Selo>
               <Selo>{m.atividades.length} atividades</Selo>
-              {naoConf > 0 && <Selo tom="amarelo">{naoConf} durações NÃO CONFIRMADO</Selo>}
+              {naoConf > 0 && <Selo tom="amarelo">{naoConf === 1 ? '1 duração não confirmada' : `${naoConf} durações não confirmadas`}</Selo>}
               {editadoVsPadrao && <Selo tom="azul">editado em relação ao padrão</Selo>}
             </div>
           </div>
@@ -110,7 +111,7 @@ export default function ModeloDetalhe({ tipo }: { tipo: TipoObra }) {
       </div>
 
       {editando && invalidas.length > 0 && (
-        <Aviso tom="vermelho" titulo={`Os pesos de ${invalidas.length} etapa(s) não somam 100%`}>
+        <Aviso tom="vermelho" titulo={invalidas.length === 1 ? 'Os pesos de 1 etapa não somam 100%' : `Os pesos de ${invalidas.length} etapas não somam 100%`}>
           Ajuste os pesos ou use "Normalizar para 100%" na etapa. O modelo só pode ser salvo com todas as etapas somando 100%.
         </Aviso>
       )}
@@ -150,8 +151,8 @@ export default function ModeloDetalhe({ tipo }: { tipo: TipoObra }) {
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">{temFaixa ? `${formatarPct(ref!.faixaMin!)} a ${formatarPct(ref!.faixaMax!)}` : 'sem referência'}</td>
                     <td className="px-3 py-2">{!temFaixa ? <span className="text-xs text-muted">sem faixa</span> : dentro ? <Selo tom="verde">dentro</Selo> : <Selo tom="amarelo">fora da faixa</Selo>}</td>
-                    <td className="max-w-56 truncate px-3 py-2 text-xs text-muted" title={ref?.fonte}>
-                      {ref?.fonte ?? 'sem fonte'}
+                    <td className="max-w-64 px-3 py-2 text-xs text-muted">
+                      <Fonte fonte={ref?.fonte} />
                     </td>
                   </tr>
                 );
@@ -254,8 +255,8 @@ export default function ModeloDetalhe({ tipo }: { tipo: TipoObra }) {
                               <SeloNaoConfirmado />
                             )}
                           </td>
-                          <td className="max-w-48 truncate px-3 py-2 text-xs text-muted" title={a.fonte}>
-                            {a.fonte ?? 'sem fonte'}
+                          <td className="max-w-64 px-3 py-2 text-xs text-muted">
+                            <Fonte fonte={a.fonte} />
                           </td>
                         </tr>
                       ))}

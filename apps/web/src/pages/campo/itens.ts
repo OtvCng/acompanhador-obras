@@ -37,12 +37,18 @@ export function itensDaObra(obra: Obra, hoje: ISODate): ItemCampo[] {
   );
 }
 
+/** Abaixo do previsto até hoje (mostra o selo "atrasado" dentro de "Em andamento"). */
+export function abaixoDoPrevisto(x: ItemCampo): boolean {
+  return x.item.percentual < 100 && x.planejado - x.item.percentual > TOLERANCIA_PP;
+}
+
 /**
- * Agrupa os itens para o encarregado:
+ * Agrupa os itens para o encarregado. Cada item cai em um grupo só:
  * - Concluídos: 100%.
- * - Atrasados: planejado até hoje maior que o realizado.
- * - Em andamento: começou (tem avanço) ou está dentro da janela planejada.
- * - Começam nos próximos 7 dias: ainda sem avanço e com início entre amanhã e hoje + 7 dias corridos.
+ * - Atrasados: o fim planejado já passou e o item não está em 100%.
+ * - Em andamento: hoje está dentro da janela planejada (início a fim), ou o item já tem avanço
+ *   e o fim ainda não passou. Quem está abaixo do previsto ganha o selo "atrasado" na linha.
+ * - Começam nos próximos 7 dias: sem avanço e com início entre amanhã e hoje + 7 dias corridos.
  * Itens futuros além de 7 dias ficam fora da lista.
  */
 export function agruparItens(itens: ItemCampo[], hoje: ISODate): GruposCampo {
@@ -51,14 +57,15 @@ export function agruparItens(itens: ItemCampo[], hoje: ISODate): GruposCampo {
   for (const x of itens) {
     const { item } = x;
     if (item.percentual >= 100) g.concluidos.push(x);
-    else if (x.planejado - item.percentual > TOLERANCIA_PP) g.atrasados.push(x);
-    else if (item.percentual > 0 || (item.inicioPlanejado <= hoje && item.fimPlanejado >= hoje)) g.andamento.push(x);
-    else if (item.inicioPlanejado > hoje && item.inicioPlanejado <= limite) g.proximos.push(x);
+    else if (item.fimPlanejado < hoje) g.atrasados.push(x);
+    else if (item.inicioPlanejado <= hoje || item.percentual > 0) g.andamento.push(x);
+    else if (item.inicioPlanejado <= limite) g.proximos.push(x);
   }
   const porInicio = (a: ItemCampo, b: ItemCampo) => a.item.inicioPlanejado.localeCompare(b.item.inicioPlanejado) || a.atividade.codigo.localeCompare(b.atividade.codigo);
-  g.andamento.sort(porInicio);
+  // Em andamento: primeiro os que estão abaixo do previsto, depois por início.
+  g.andamento.sort((a, b) => Number(abaixoDoPrevisto(b)) - Number(abaixoDoPrevisto(a)) || porInicio(a, b));
   g.proximos.sort(porInicio);
-  g.atrasados.sort((a, b) => b.planejado - b.item.percentual - (a.planejado - a.item.percentual));
+  g.atrasados.sort((a, b) => a.item.fimPlanejado.localeCompare(b.item.fimPlanejado) || porInicio(a, b));
   g.concluidos.sort((a, b) => (b.item.fimReal ?? b.item.fimPlanejado).localeCompare(a.item.fimReal ?? a.item.fimPlanejado));
   return g;
 }

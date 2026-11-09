@@ -3,7 +3,7 @@ import { RotateCcw } from 'lucide-react';
 import { ETAPAS_CAIXA, etapasForaDaFaixa, type Obra } from '@obras/shared';
 import { Aviso, Botao, Card, EstadoVazio, Selo, SeloEstimativa, cn } from '@/components/campo/ui';
 import EntradaNumero from '@/components/campo/EntradaNumero';
-import { formatarBRL, formatarPct } from '@/components/campo/formatos';
+import { formatarBRL, formatarPct, plural } from '@/components/campo/formatos';
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
@@ -62,7 +62,7 @@ export default function PassoOrcamento({
       </div>
 
       {fora.size > 0 && (
-        <Aviso titulo={`${fora.size} etapa(s) fora da faixa de referência da Caixa`}>
+        <Aviso titulo={`${plural(fora.size, 'etapa', 'etapas')} fora da faixa de referência da Caixa`}>
           Não impede salvar, mas confira se o valor faz sentido para esta obra.
         </Aviso>
       )}

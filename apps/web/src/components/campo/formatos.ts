@@ -60,3 +60,6 @@ export const NOMES_STATUS: Record<StatusObra, string> = {
   pausada: 'Pausada',
   concluida: 'Concluída',
 };
+
+/** "1 etapa" / "3 etapas". */
+export const plural = (n: number, singular: string, pluralForma: string) => `${n} ${n === 1 ? singular : pluralForma}`;

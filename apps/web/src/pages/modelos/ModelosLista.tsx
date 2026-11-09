@@ -48,7 +48,7 @@ export default function ModelosLista() {
                     <div className="mt-4 grid grid-cols-3 gap-2 border-t border-border pt-3">
                       <Numero valor={m.etapasAtivas.length} rotulo="etapas ativas" />
                       <Numero valor={m.atividades.length} rotulo="atividades" />
-                      <Numero valor={naoConf} rotulo="durações não confirmadas" />
+                      <Numero valor={naoConf} rotulo={naoConf === 1 ? 'duração não confirmada' : 'durações não confirmadas'} />
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {naoConf > 0 && <SeloNaoConfirmado />}

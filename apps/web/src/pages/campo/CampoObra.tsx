@@ -3,31 +3,37 @@ import { Link, useParams } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, CalendarClock, CheckCircle2, ChevronDown, ChevronRight, Hammer } from 'lucide-react';
 import { toast } from 'sonner';
 import { useObra, useObras, useObrasVisiveis } from '@/store';
-import { Aviso, BarraProgresso, EstadoVazio, cn } from '@/components/campo/ui';
+import { Aviso, BarraProgresso, EstadoVazio, Selo, cn } from '@/components/campo/ui';
 import { formatarDataCurta, formatarPctInteiro } from '@/components/campo/formatos';
-import { agruparItens, itensDaObra, type ItemCampo } from './itens';
+import { abaixoDoPrevisto, agruparItens, itensDaObra, type ItemCampo } from './itens';
 import FolhaApontamento, { toastApontamento } from './FolhaApontamento';
 
 const TODOS = '__todos__';
 
 function LinhaItem({ x, mostrarLocal, destaque, aoAbrir }: { x: ItemCampo; mostrarLocal: boolean; destaque?: 'atrasado' | 'proximo'; aoAbrir: () => void }) {
   const { item, atividade, local } = x;
+  // Vermelho: no grupo Atrasados (prazo vencido) ou em andamento abaixo do previsto.
+  const vencido = destaque === 'atrasado';
+  const atrasado = vencido || (destaque !== 'proximo' && abaixoDoPrevisto(x));
   return (
     <li>
       <button type="button" onClick={aoAbrir} className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left transition active:bg-gray-50 hover:bg-gray-50">
         <div className="min-w-0 flex-1">
-          <div className="truncate font-medium text-gray-900">
+          <div className="line-clamp-2 font-medium leading-snug text-gray-900">
             <span className="mr-1 text-xs font-normal text-muted">{atividade.codigo}</span>
             {atividade.nome}
           </div>
-          <div className="mt-0.5 truncate text-xs text-muted">
-            {mostrarLocal && local && local.tipo !== 'obra' && <>{local.nome} · </>}
-            {formatarDataCurta(item.inicioPlanejado)} a {formatarDataCurta(item.fimPlanejado)}
-            {destaque === 'atrasado' && <span className="text-saude-vermelho"> · previsto {formatarPctInteiro(x.planejado)}</span>}
+          <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted">
+            {!vencido && atrasado && <Selo tom="vermelho">atrasado</Selo>}
+            <span>
+              {mostrarLocal && local && local.tipo !== 'obra' && <>{local.nome} · </>}
+              {formatarDataCurta(item.inicioPlanejado)} a {formatarDataCurta(item.fimPlanejado)}
+              {atrasado && <span className="text-saude-vermelho"> · previsto {formatarPctInteiro(x.planejado)}</span>}
+            </span>
           </div>
-          {destaque !== 'proximo' && <BarraProgresso valor={item.percentual} className="mt-2 h-1.5" cor={destaque === 'atrasado' ? 'bg-saude-vermelho' : item.percentual >= 100 ? 'bg-saude-azul' : 'bg-accent'} />}
+          {destaque !== 'proximo' && <BarraProgresso valor={item.percentual} className="mt-2 h-1.5" cor={atrasado ? 'bg-saude-vermelho' : item.percentual >= 100 ? 'bg-saude-azul' : 'bg-accent'} />}
         </div>
-        <span className={cn('w-12 shrink-0 text-right text-base font-semibold tabular-nums', destaque === 'atrasado' && 'text-saude-vermelho')}>{formatarPctInteiro(item.percentual)}</span>
+        <span className={cn('w-12 shrink-0 text-right text-base font-semibold tabular-nums', atrasado && 'text-saude-vermelho')}>{formatarPctInteiro(item.percentual)}</span>
         <ChevronRight className="size-5 shrink-0 text-gray-400" aria-hidden />
       </button>
     </li>

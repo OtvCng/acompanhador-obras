@@ -53,7 +53,7 @@ export default function PassoRevisao({ obra, usuarios }: { obra: Obra; usuarios:
       </div>
 
       {naoConfirmadas > 0 && (
-        <Aviso titulo={`${naoConfirmadas} de ${totalAtividades} atividades usam duração NÃO CONFIRMADO`}>
+        <Aviso titulo={naoConfirmadas === 1 ? `1 de ${totalAtividades} atividades usa duração não confirmada` : `${naoConfirmadas} de ${totalAtividades} atividades usam duração não confirmada`}>
           As durações padrão dos modelos ainda não foram validadas pela construtora. O cronograma abaixo é uma estimativa e pode ser ajustado em Modelos ou depois de criada a
           obra.
         </Aviso>

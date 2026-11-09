@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ChevronDown, ChevronUp, Layers, Plus, Trash2 } from 'lucide-react';
 import type { TipoPavimento } from '@obras/shared';
 import { Botao, Entrada, Selecao } from '@/components/campo/ui';
-import { NOMES_PAVIMENTO } from '@/components/campo/formatos';
+import { NOMES_PAVIMENTO, plural } from '@/components/campo/formatos';
 import { gerarPavimentosTipo, novaChave, nomeTipo, type PavimentoForm } from './estado';
 
 const TIPOS_PAV = Object.keys(NOMES_PAVIMENTO) as TipoPavimento[];
@@ -40,7 +40,7 @@ export default function EditorPavimentos({ valor, aoMudar, erro }: { valor: Pavi
           </label>
           <Botao variante="secundario" disabled={!nValido} onClick={() => aoMudar(gerarPavimentosTipo(valor, nNum))}>
             <Layers className="size-4" aria-hidden />
-            Gerar {nValido ? nNum : 'N'} pavimentos tipo
+            {nValido ? (nNum === 1 ? 'Gerar 1 pavimento tipo' : `Gerar ${nNum} pavimentos tipo`) : 'Gerar N pavimentos tipo'}
           </Botao>
         </div>
       </div>
@@ -77,7 +77,7 @@ export default function EditorPavimentos({ valor, aoMudar, erro }: { valor: Pavi
           <Plus className="size-4" aria-hidden />
           Adicionar pavimento
         </Botao>
-        <span className="text-xs text-muted">{valor.length} pavimento(s)</span>
+        <span className="text-xs text-muted">{plural(valor.length, 'pavimento', 'pavimentos')}</span>
       </div>
       {erro && <p className="text-sm text-saude-vermelho">{erro}</p>}
     </div>
