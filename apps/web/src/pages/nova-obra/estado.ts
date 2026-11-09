@@ -1,4 +1,4 @@
-import type { ModeloObra, Obra, ParametrosNovaObra, TipoObra, TipoPavimento } from '@obras/shared';
+import { ajustarValorEtapa, pavimentosPadrao as pavimentosPadraoShared, type ModeloObra, type Obra, type ParametrosNovaObra, type TipoObra, type TipoPavimento } from '@obras/shared';
 import { lerNumero } from '@/components/campo/formatos';
 
 export type Desdobramento = ModeloObra['desdobramento'];
@@ -38,20 +38,10 @@ export function nomeTipo(n: number) {
   return `${n}º pavimento`;
 }
 
-/** Pavimentos sugeridos ao escolher o tipo (o usuário edita depois). */
+/** Pavimentos sugeridos ao escolher o tipo (padrão do pacote shared; o usuário edita depois). */
 export function pavimentosPadrao(tipo: TipoObra | null): PavimentoForm[] {
-  const p = (nome: string, tipoPavimento: TipoPavimento): PavimentoForm => ({ chave: novaChave(), nome, tipoPavimento });
-  const tipos = (n: number) => Array.from({ length: n }, (_, i) => p(nomeTipo(i + 1), 'tipo'));
-  switch (tipo) {
-    case 'sobrado':
-      return [p('Térreo', 'terreo'), p('Pavimento superior', 'tipo')];
-    case 'predio_3_6':
-      return [p('Térreo', 'terreo'), ...tipos(3), p('Cobertura', 'cobertura')];
-    case 'predio_7_mais':
-      return [p('Subsolo', 'subsolo_garagem'), p('Térreo', 'terreo'), ...tipos(7), p('Cobertura', 'cobertura'), p('Casa de máquinas', 'casa_maquinas')];
-    default:
-      return [p('Térreo', 'terreo')];
-  }
+  if (!tipo) return [];
+  return pavimentosPadraoShared(tipo).map((p) => ({ chave: novaChave(), ...p }));
 }
 
 const ABAIXO_DO_TIPO: TipoPavimento[] = ['subsolo_garagem', 'terreo', 'terreo_comercial'];
@@ -124,35 +114,18 @@ export function paramsDe(f: FormNovaObra, desd: Desdobramento): ParametrosNovaOb
   return p;
 }
 
-const r2 = (v: number) => Math.round(v * 100) / 100;
-
 /**
- * Aplica valores editados por etapa (R$) à obra gerada, redistribuindo proporcionalmente entre os itens
- * das atividades da etapa. Etapas editadas deixam de ser "estimativa" (valorEstimado = false).
- * O resíduo de arredondamento vai para o último item, para a soma bater no centavo.
+ * Aplica valores editados por etapa (R$) à obra gerada. Usa ajustarValorEtapa do shared sem compensar
+ * as outras etapas (manterTotal = false): o valor é redistribuído proporcionalmente entre as atividades
+ * da etapa e ela deixa de ser "estimativa". O orçamento total continua o informado no passo 2; quem
+ * confere a soma é a tela.
  */
 export function aplicarValoresEtapas(obra: Obra, valores: Record<number, number>): Obra {
-  let mudou = false;
-  const etapas = obra.etapas.map((etapa) => {
-    const novo = valores[etapa.codigo];
-    if (novo === undefined || Math.abs(novo - etapa.valorOrcado) < 0.005) return etapa;
-    mudou = true;
-    const itens = etapa.atividades.flatMap((a) => a.itens);
-    const totalItens = itens.reduce((s, i) => s + i.valorOrcado, 0);
-    const n = itens.length;
-    let acumulado = 0;
-    let idx = 0;
-    const atividades = etapa.atividades.map((a) => ({
-      ...a,
-      itens: a.itens.map((i) => {
-        idx++;
-        let v = totalItens > 0 ? r2((i.valorOrcado * novo) / totalItens) : r2(novo / n);
-        if (idx === n) v = r2(novo - acumulado);
-        acumulado = r2(acumulado + v);
-        return { ...i, valorOrcado: v };
-      }),
-    }));
-    return { ...etapa, valorOrcado: r2(novo), valorEstimado: false, atividades };
-  });
-  return mudou ? { ...obra, etapas } : obra;
+  let atual = obra;
+  for (const [codigo, valor] of Object.entries(valores)) {
+    const etapa = atual.etapas.find((e) => e.codigo === Number(codigo));
+    if (!etapa || Math.abs(etapa.valorOrcado - valor) < 0.005) continue;
+    atual = ajustarValorEtapa(atual, Number(codigo), valor, false);
+  }
+  return atual === obra ? obra : { ...atual, orcamentoTotal: obra.orcamentoTotal };
 }

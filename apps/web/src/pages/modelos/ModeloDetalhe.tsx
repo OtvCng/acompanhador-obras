@@ -239,6 +239,7 @@ export default function ModeloDetalhe({ tipo }: { tipo: TipoObra }) {
                             ) : (
                               'obra toda'
                             )}
+                            {a.minPavimentos !== undefined && <div className="text-muted">só com {a.minPavimentos}+ pavimentos</div>}
                           </td>
                           <td className="px-3 py-2 text-xs tabular-nums text-muted">{a.predecessoras.length ? a.predecessoras.join(', ') : 'nenhuma'}</td>
                           <td className="px-3 py-2">
