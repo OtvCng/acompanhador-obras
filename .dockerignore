@@ -1,0 +1,17 @@
+**/node_modules
+**/dist
+**/.turbo
+**/*.log
+.git
+.gitignore
+.env
+.env.*
+.vscode
+.idea
+docs
+Dockerfile
+docker-compose.yml
+.dockerignore
+apps/api
+**/*.test.ts
+**/*.test.tsx
