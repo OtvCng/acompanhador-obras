@@ -1,0 +1,23 @@
+# Postgres de desenvolvimento. Subir: docker compose -f docker-compose.dev.yml up -d
+# Porta 5433 no host (evita conflito com um Postgres instalado no Windows).
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: obras-db-dev
+    environment:
+      POSTGRES_USER: obras
+      POSTGRES_PASSWORD: obras
+      POSTGRES_DB: obras
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - obras-db-dev:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U obras -d obras"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  obras-db-dev:

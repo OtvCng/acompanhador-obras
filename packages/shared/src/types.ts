@@ -19,6 +19,12 @@ export interface Usuario {
   id: string;
   nome: string;
   perfil: Perfil;
+  /** (Banco/API) Só vem para o diretor. */
+  email?: string | null;
+  /** (Banco/API) false = desativado, não entra e não aparece para novas obras. */
+  ativo?: boolean;
+  /** (Banco/API) true = usuário fictício das obras de exemplo, sem login. */
+  exemplo?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -190,6 +196,10 @@ export interface Obra {
   etapas: EtapaObra[];
   baselines: Baseline[]; // vazio = ainda em planejamento, sem baseline
   apontamentos: Apontamento[];
+  /** (Banco/API) Trava otimista: o PUT manda a revisão que leu; se outra pessoa salvou antes, a API responde 409. */
+  revisao?: number;
+  /** (Banco/API) Obra de demonstração ("Restaurar dados de exemplo" só mexe nestas). */
+  exemplo?: boolean;
 }
 
 // ---------------------------------------------------------------------------
