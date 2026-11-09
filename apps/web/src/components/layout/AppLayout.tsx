@@ -1,15 +1,39 @@
-// Provisório. Dono: Telas-Gestão (substituir por Sidebar + Topbar).
-import { Outlet, NavLink } from 'react-router-dom';
+import { useState } from 'react';
+import { Outlet, useLocation, matchPath } from 'react-router-dom';
+import { Toaster } from 'sonner';
+import { Sidebar } from './Sidebar';
+import { Topbar } from './Topbar';
+import { TooltipProvider } from '@/components/ui';
+import { useObras } from '@/store';
+
+function useTituloPagina(): string {
+  const { pathname } = useLocation();
+  const { obras } = useObras();
+  if (pathname === '/') return 'Painel';
+  if (matchPath('/obras/nova', pathname)) return 'Nova obra';
+  const det = matchPath('/obras/:id', pathname);
+  if (det) return obras.find((o) => o.id === det.params.id)?.nome ?? 'Detalhe da obra';
+  if (pathname.startsWith('/obras')) return 'Obras';
+  if (pathname.startsWith('/campo')) return 'Campo';
+  if (pathname.startsWith('/modelos')) return 'Modelos de obra';
+  return 'Acompanhador de Obras';
+}
+
 export default function AppLayout() {
+  const [menuAberto, setMenuAberto] = useState(false);
+  const titulo = useTituloPagina();
   return (
-    <div className="flex h-full">
-      <aside className="w-56 bg-primary text-primary-foreground p-4 space-y-2">
-        <div className="font-semibold mb-4">Acompanhador de Obras</div>
-        {[['/', 'Painel'], ['/obras', 'Obras'], ['/campo', 'Campo'], ['/modelos', 'Modelos']].map(([to, l]) => (
-          <NavLink key={to} to={to} end className="block opacity-80 hover:opacity-100">{l}</NavLink>
-        ))}
-      </aside>
-      <main className="flex-1 overflow-auto p-6"><Outlet /></main>
-    </div>
+    <TooltipProvider delayDuration={200}>
+      <div className="flex h-full">
+        <Sidebar aberta={menuAberto} onFechar={() => setMenuAberto(false)} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Topbar titulo={titulo} onAbrirMenu={() => setMenuAberto(true)} />
+          <main className="flex-1 overflow-auto p-4 lg:p-6">
+            <Outlet />
+          </main>
+        </div>
+      </div>
+      <Toaster position="bottom-right" richColors />
+    </TooltipProvider>
   );
 }
