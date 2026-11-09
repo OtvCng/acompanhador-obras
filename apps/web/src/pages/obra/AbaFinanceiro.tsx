@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { AlertTriangle, Pencil } from 'lucide-react';
-import { ETAPAS_CAIXA, curvaS, etapasForaDaFaixa, indicadoresEtapa, indicadoresObra, type EtapaObra, type Obra } from '@obras/shared';
+import { ETAPAS_CAIXA, ajustarValorEtapa, curvaS, etapasForaDaFaixa, indicadoresEtapa, indicadoresObra, type EtapaObra, type Obra } from '@obras/shared';
 import { useObras } from '@/store';
 import {
   Badge,
@@ -30,27 +30,6 @@ import {
 import { MensalChart, curvaParaMensal } from '@/components/charts';
 import { formatBRL, formatData, formatPct } from '@/lib/format';
 import { cn } from '@/lib/utils';
-
-/** Troca o valor de uma etapa: redistribui proporcionalmente nos itens, marca valorEstimado = false e recalcula o orçamento total. */
-function comNovoValor(obra: Obra, codigo: number, valor: number): Obra {
-  const etapas = obra.etapas.map((e) => {
-    if (e.codigo !== codigo) return e;
-    const itens = e.atividades.flatMap((a) => a.itens);
-    const somaItens = itens.reduce((s, i) => s + i.valorOrcado, 0);
-    const fator = somaItens > 0 ? valor / somaItens : 0;
-    const porItemIgual = itens.length ? valor / itens.length : 0;
-    return {
-      ...e,
-      valorOrcado: valor,
-      valorEstimado: false,
-      atividades: e.atividades.map((a) => ({
-        ...a,
-        itens: a.itens.map((i) => ({ ...i, valorOrcado: Math.round((somaItens > 0 ? i.valorOrcado * fator : porItemIgual) * 100) / 100 })),
-      })),
-    };
-  });
-  return { ...obra, etapas, orcamentoTotal: Math.round(etapas.reduce((s, e) => s + e.valorOrcado, 0) * 100) / 100 };
-}
 
 export function AbaFinanceiro({ obra }: { obra: Obra }) {
   const { hoje, atualizarObra } = useObras();
@@ -83,7 +62,8 @@ export function AbaFinanceiro({ obra }: { obra: Obra }) {
   function salvar() {
     if (!editando || !valorValido) return;
     try {
-      atualizarObra(comNovoValor(obra, editando.codigo, valorNovo));
+      // manterTotal = false: as outras etapas (talvez ainda estimadas) não mudam; o total vira a soma.
+      atualizarObra(ajustarValorEtapa(obra, editando.codigo, valorNovo, false));
       toast.success(`Valor de "${editando.nome}" atualizado.`);
       setEditando(null);
     } catch (err) {
