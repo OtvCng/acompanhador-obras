@@ -115,23 +115,32 @@ export function ObrasProvider({ children }: { children: ReactNode }) {
 
   const atualizarObra = useCallback((obra: Obra) => mudarObra(obra.id, () => obra), [mudarObra]);
 
-  /** Lança erro (sem alterar nada) se for v2+ sem justificativa ou se a obra não existir. */
+  /**
+   * Lê a obra pelo setState funcional (pega um atualizarObra feito no mesmo handler).
+   * Lança erro na hora, sem alterar nada, se a obra já tem baseline e a justificativa veio vazia.
+   */
   const congelarBaseline = useCallback((obraId: string, justificativa?: string) => {
     const { obras, usuarioAtualId, hoje } = ref.current;
     const obra = obras.find((o) => o.id === obraId);
-    if (!obra) throw new Error('Obra não encontrada.');
-    const nova = congelarBaselineObra(obra, usuarioAtualId, hoje, justificativa);
-    mudarObra(obraId, () => nova);
+    if (obra && obra.baselines.length >= 1 && !justificativa?.trim()) {
+      throw new Error('Justificativa obrigatória para replanejar (baseline v2 ou posterior).');
+    }
+    mudarObra(obraId, (o) => {
+      try {
+        return congelarBaselineObra(o, usuarioAtualId, hoje, justificativa);
+      } catch {
+        return o;
+      }
+    });
   }, [mudarObra]);
 
+  /** Lê a obra pelo setState funcional; obra ou item inexistente = nada acontece. */
   const lancarApontamento = useCallback<ObrasStore['lancarApontamento']>((a) => {
-    const { obras, usuarioAtualId, hoje } = ref.current;
-    const obra = obras.find((o) => o.id === a.obraId);
-    if (!obra) throw new Error('Obra não encontrada.');
-    const existe = obra.etapas.some((e) => e.atividades.some((at) => at.itens.some((i) => i.id === a.itemId)));
-    if (!existe) throw new Error('Item não encontrado nesta obra.');
+    const { usuarioAtualId, hoje } = ref.current;
     const novo = Math.max(0, Math.min(100, Math.round(a.percentualNovo)));
     mudarObra(a.obraId, (o) => {
+      const existe = o.etapas.some((e) => e.atividades.some((at) => at.itens.some((i) => i.id === a.itemId)));
+      if (!existe) return o;
       let anterior = 0;
       const etapas = o.etapas.map((e) => ({
         ...e,
