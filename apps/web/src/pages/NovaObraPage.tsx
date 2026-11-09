@@ -8,7 +8,6 @@ import { toast } from 'sonner';
 import { congelarBaseline as congelarBaselineObra, gerarObra, type Obra, type TipoObra } from '@obras/shared';
 import { useObras } from '@/store';
 import { Aviso, Botao, Card, EstadoVazio, cn } from '@/components/campo/ui';
-import ToasterCampo from '@/components/campo/ToasterCampo';
 import PassoTipo from './nova-obra/PassoTipo';
 import PassoParametros from './nova-obra/PassoParametros';
 import PassoOrcamento from './nova-obra/PassoOrcamento';
@@ -150,7 +149,6 @@ export default function NovaObraPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 pb-28">
-      <ToasterCampo />
       <div>
         <Link to="/obras" className="inline-flex min-h-11 items-center gap-1 text-sm text-muted hover:text-gray-900">
           <ArrowLeft className="size-4" aria-hidden /> Obras

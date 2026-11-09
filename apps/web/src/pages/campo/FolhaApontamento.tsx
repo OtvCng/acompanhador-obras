@@ -46,8 +46,7 @@ export default function FolhaApontamento({
   const ultimo = [...obra.apontamentos].reverse().find((a) => a.itemId === alvo.item.id);
 
   const adicionarFoto = () => {
-    const n = proximoNumeroFoto(obra, hoje, fotos);
-    setFotos((f) => [...f, `foto-${hoje}-${n}.jpg`]);
+    setFotos((f) => [...f, `foto-${hoje}-${proximoNumeroFoto(obra, hoje, f)}.jpg`]);
   };
 
   const salvar = () => {

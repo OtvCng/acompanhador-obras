@@ -17,7 +17,7 @@ function indicadoresSeguros(obra: Obra, hoje: ISODate): Indicadores | null {
 function etapaAtual(obra: Obra, hoje: ISODate): string | null {
   try {
     const e = etapasEmAndamento(obra, hoje);
-    return e.length ? e.map((x) => x.nome).join(', ') : null;
+    return e.length ? e.slice(0, 2).map((x) => x.nome).join(', ') + (e.length > 2 ? ` e mais ${e.length - 2}` : '') : null;
   } catch {
     return null;
   }
@@ -67,7 +67,7 @@ export default function CampoLista() {
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <SaudeBadge faixa={faixa} />
-                    {o.status !== 'em_andamento' && <Selo>{NOMES_STATUS[o.status]}</Selo>}
+                    {o.status !== 'em_andamento' && o.status !== 'concluida' && <Selo>{NOMES_STATUS[o.status]}</Selo>}
                     {ind?.alertaCaixa && <Selo tom="vermelho">Desvio acima de 10 pp</Selo>}
                     {atual && <span className="truncate text-xs text-muted">Agora: {atual}</span>}
                   </div>
