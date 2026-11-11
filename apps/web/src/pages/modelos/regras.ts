@@ -26,6 +26,23 @@ export function normalizarEtapa(m: ModeloObra, etapa: number): ModeloObra {
   return { ...m, atividades: m.atividades.map((a) => (novo.has(a.codigo) ? { ...a, pesoNaEtapa: novo.get(a.codigo)! } : a)) };
 }
 
+/** Igualdade profunda que ignora a ordem das chaves (o Postgres jsonb reordena as chaves ao gravar). */
+function iguais(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) {
+    const bb = b as unknown[];
+    return a.length === bb.length && a.every((x, i) => iguais(x, bb[i]));
+  }
+  const oa = a as Record<string, unknown>;
+  const ob = b as Record<string, unknown>;
+  // Chave com undefined equivale a chave ausente (não sobrevive ao JSON).
+  const ka = Object.keys(oa).filter((k) => oa[k] !== undefined);
+  const kb = Object.keys(ob).filter((k) => ob[k] !== undefined);
+  return ka.length === kb.length && ka.every((k) => iguais(oa[k], ob[k]));
+}
+
 export function modeloFoiEditado(atual: ModeloObra, padrao: ModeloObra): boolean {
-  return JSON.stringify(atual) !== JSON.stringify(padrao);
+  return !iguais(atual, padrao);
 }

@@ -9,6 +9,7 @@ import ObraDetalhePage from './pages/ObraDetalhePage';
 import NovaObraPage from './pages/NovaObraPage';
 import CampoPage from './pages/CampoPage';
 import ModelosPage from './pages/ModelosPage';
+import UsuariosPage from './pages/UsuariosPage';
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="campo/:obraId" element={<CampoPage />} />
         <Route path="modelos" element={<ModelosPage />} />
         <Route path="modelos/:tipo" element={<ModelosPage />} />
+        <Route path="usuarios" element={<UsuariosPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

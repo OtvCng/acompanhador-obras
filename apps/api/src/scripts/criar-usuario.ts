@@ -9,7 +9,7 @@ import { eq } from 'drizzle-orm';
 import { db, pool, schema as s } from '../db';
 import { hashSenha, senhaAleatoria } from '../auth/senha';
 
-const { values } = parseArgs({ options: { nome: { type: 'string' }, email: { type: 'string' }, perfil: { type: 'string' }, senha: { type: 'string' } } });
+const { values } = parseArgs({ args: process.argv.slice(2).filter((a) => a !== "--"), options: { nome: { type: 'string' }, email: { type: 'string' }, perfil: { type: 'string' }, senha: { type: 'string' } } });
 const email = values.email?.trim().toLowerCase();
 const perfil = values.perfil as 'diretor' | 'engenheiro' | 'encarregado' | undefined;
 if (!email || !perfil || !['diretor', 'engenheiro', 'encarregado'].includes(perfil)) {

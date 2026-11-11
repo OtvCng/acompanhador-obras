@@ -2,11 +2,11 @@
 import type { FastifyInstance } from 'fastify';
 import { eq, inArray } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
-import { aplicarApontamento, congelarBaseline, ocultarValores, type Obra } from '@obras/shared';
+import { LIMITE_JUSTIFICATIVA_DU, OCULTAR_VALORES_ENCARREGADO, aplicarApontamento, congelarBaseline, desviosParaJustificar, ocultarValores, type Obra } from '@obras/shared';
 import { db, schema as s } from '../db';
 import { hojeServidor } from '../env';
 import { ErroHttp, exigirPerfil, exigirUsuario, type UsuarioSessao } from '../auth/sessao';
-import { carregarObra, carregarObras, gravarApontamento, gravarObra, inserirBaseline, travarObra } from '../repo/obras';
+import { carregarObra, carregarObras, gravarApontamento, gravarObra, inserirAlteracao, inserirBaseline, travarObra } from '../repo/obras';
 import { recriarExemplos } from '../repo/exemplos';
 import * as v from '../validacao';
 
@@ -16,20 +16,35 @@ const podeVer = (u: UsuarioSessao, o: LinhaObra) =>
   u.perfil === 'diretor' || (u.perfil === 'engenheiro' ? o.engenheiroId === u.id : o.encarregadoId === u.id);
 const podeEditar = (u: UsuarioSessao, o: LinhaObra) => u.perfil === 'diretor' || (u.perfil === 'engenheiro' && o.engenheiroId === u.id);
 
-/** Encarregado nunca recebe R$ (valores viram pesos; ver ocultarValores). */
-const paraUsuario = (u: UsuarioSessao, o: Obra) => (u.perfil === 'encarregado' ? ocultarValores(o) : o);
+/** Encarregado deixa de receber R$ só se a flag for religada (desligada por decisão do Otavio, 10/11). */
+export const ocultaValores = (u: UsuarioSessao) => OCULTAR_VALORES_ENCARREGADO && u.perfil === 'encarregado';
+export const paraUsuario = (u: UsuarioSessao, o: Obra) => (ocultaValores(u) ? ocultarValores(o) : o);
 
-async function obraVisivel(u: UsuarioSessao, id: string) {
+/** 404 (não 403) quando o usuário não enxerga a obra: não revela que ela existe. */
+export async function obraVisivel(u: UsuarioSessao, id: string) {
   const [linha] = await db.select({ engenheiroId: s.obras.engenheiroId, encarregadoId: s.obras.encarregadoId }).from(s.obras).where(eq(s.obras.id, id));
   if (!linha || !podeVer(u, linha)) throw new ErroHttp(404, 'Obra não encontrada.');
   return linha;
 }
 
-async function conferirResponsaveis(engenheiroId: string, encarregadoId: string) {
-  const us = await db.select({ id: s.usuarios.id, ativo: s.usuarios.ativo }).from(s.usuarios).where(inArray(s.usuarios.id, [engenheiroId, encarregadoId]));
+/**
+ * Confere os responsáveis. O engenheiro precisa ter perfil engenheiro ou diretor (como no wizard): sem isso
+ * dava para pôr um encarregado como "engenheiro" da obra via API. O encarregado pode ser qualquer perfil
+ * (o wizard deixa o próprio engenheiro tocar a obra quando não há encarregado cadastrado).
+ * Responsável novo precisa estar ativo; o que não mudou no PUT não é reconferido (pode ter sido desativado depois).
+ */
+async function conferirResponsaveis(engenheiroId: string, encarregadoId: string, atual?: LinhaObra) {
+  const us = await db.select({ id: s.usuarios.id, perfil: s.usuarios.perfil, ativo: s.usuarios.ativo }).from(s.usuarios).where(inArray(s.usuarios.id, [engenheiroId, encarregadoId]));
   for (const id of [engenheiroId, encarregadoId]) {
     if (!us.some((x) => x.id === id)) throw new ErroHttp(400, 'Engenheiro ou encarregado inexistente.');
   }
+  const eng = us.find((x) => x.id === engenheiroId)!;
+  const enc = us.find((x) => x.id === encarregadoId)!;
+  if (!atual || atual.engenheiroId !== engenheiroId) {
+    if (eng.perfil !== 'engenheiro' && eng.perfil !== 'diretor') throw new ErroHttp(400, 'O engenheiro responsável precisa ter perfil de engenheiro ou diretor.');
+    if (!eng.ativo) throw new ErroHttp(400, 'O engenheiro escolhido está desativado.');
+  }
+  if ((!atual || atual.encarregadoId !== encarregadoId) && !enc.ativo) throw new ErroHttp(400, 'O encarregado escolhido está desativado.');
 }
 
 export async function rotasObras(app: FastifyInstance) {
@@ -61,6 +76,7 @@ export async function rotasObras(app: FastifyInstance) {
     const nova: Obra = {
       ...obra,
       apontamentos: [],
+      gastos: [],
       baselines: obra.baselines.map((b) => ({ ...b, versao: 1, autorId: u.id, congeladaEm: hoje, justificativa: undefined })),
     };
     for (const e of nova.etapas) for (const a of e.atividades) for (const i of a.itens) {
@@ -80,8 +96,11 @@ export async function rotasObras(app: FastifyInstance) {
     const linha = await obraVisivel(u, req.params.id);
     if (!podeEditar(u, linha)) throw new ErroHttp(403, 'Só o engenheiro responsável ou o diretor editam esta obra.');
     const corpo = v.obra.parse(req.body) as Obra;
+    const { justificativaAlteracao } = v.extraGravarObra.parse(req.body ?? {});
     if (corpo.id !== req.params.id) throw new ErroHttp(400, 'Identificador da obra não confere.');
-    await conferirResponsaveis(corpo.engenheiroId, corpo.encarregadoId);
+    // Trocar o engenheiro responsável é decisão do diretor (engenheiro não "passa" a obra adiante pela API).
+    if (u.perfil !== 'diretor' && corpo.engenheiroId !== linha.engenheiroId) throw new ErroHttp(403, 'Só o diretor troca o engenheiro responsável.');
+    await conferirResponsaveis(corpo.engenheiroId, corpo.encarregadoId, linha);
 
     await db.transaction(async (tx) => {
       const travada = await travarObra(tx, corpo.id);
@@ -96,7 +115,18 @@ export async function rotasObras(app: FastifyInstance) {
         if (r?.inicioReal) i.inicioReal = r.inicioReal; else delete i.inicioReal;
         if (r?.fimReal) i.fimReal = r.fimReal; else delete i.fimReal;
       }
+      // Regra do cronograma (plano 2026-11-11-15-05): data de etapa/atividade que mudou e ficou a mais de
+      // 5 d.u. da baseline inicial exige justificativa. Conferido aqui para não depender da tela.
+      const desvios = desviosParaJustificar(atual, corpo);
+      if (desvios.length) {
+        if (!justificativaAlteracao || justificativaAlteracao.length < 5) {
+          throw new ErroHttp(400, `Alteração de prazo acima de ${LIMITE_JUSTIFICATIVA_DU} dias úteis da baseline inicial precisa de justificativa (${desvios.map((d) => d.codigo).join(', ')}).`);
+        }
+      }
       await gravarObra(tx, { ...corpo, revisao: travada.revisao }, { nova: false });
+      if (desvios.length) {
+        await inserirAlteracao(tx, corpo.id, { id: `alt-${randomUUID()}`, data: hojeServidor(), autorId: u.id, justificativa: justificativaAlteracao!, itens: desvios });
+      }
     });
     return carregarObra(corpo.id);
   });
@@ -109,6 +139,8 @@ export async function rotasObras(app: FastifyInstance) {
     await db.transaction(async (tx) => {
       const travada = await travarObra(tx, req.params.id);
       const obra = (await carregarObra(req.params.id, tx))!;
+      // Baseline inicial é fixa: mudanças de prazo vão para o histórico com justificativa (plano 2026-11-11-15-05).
+      if (obra.baselines.length >= 1) throw new ErroHttp(400, 'A baseline inicial já existe e é fixa. Alterações de prazo são registradas com justificativa no cronograma.');
       let nova: Obra;
       try {
         nova = congelarBaseline(obra, u.id, hojeServidor(), justificativa || undefined);

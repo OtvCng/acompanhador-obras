@@ -1,0 +1,1411 @@
+{
+  "id": "a3cda55b-8602-4be3-b202-342daf1741dd",
+  "prevId": "04085b35-40b9-4663-948f-fa736af0d784",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.alteracoes_cronograma": {
+      "name": "alteracoes_cronograma",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "obra_id": {
+          "name": "obra_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data": {
+          "name": "data",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "autor_id": {
+          "name": "autor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "justificativa": {
+          "name": "justificativa",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "itens": {
+          "name": "itens",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "alteracoes_cronograma_obra_idx": {
+          "name": "alteracoes_cronograma_obra_idx",
+          "columns": [
+            {
+              "expression": "obra_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "criado_em",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "alteracoes_cronograma_obra_id_obras_id_fk": {
+          "name": "alteracoes_cronograma_obra_id_obras_id_fk",
+          "tableFrom": "alteracoes_cronograma",
+          "tableTo": "obras",
+          "columnsFrom": [
+            "obra_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "alteracoes_cronograma_autor_id_usuarios_id_fk": {
+          "name": "alteracoes_cronograma_autor_id_usuarios_id_fk",
+          "tableFrom": "alteracoes_cronograma",
+          "tableTo": "usuarios",
+          "columnsFrom": [
+            "autor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.apontamentos": {
+      "name": "apontamentos",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "obra_id": {
+          "name": "obra_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data": {
+          "name": "data",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "percentual_anterior": {
+          "name": "percentual_anterior",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "percentual_novo": {
+          "name": "percentual_novo",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "observacao": {
+          "name": "observacao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fotos": {
+          "name": "fotos",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::text[]"
+        },
+        "autor_id": {
+          "name": "autor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "seq": {
+          "name": "seq",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "apontamentos_seq_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
+        }
+      },
+      "indexes": {
+        "apontamentos_obra_idx": {
+          "name": "apontamentos_obra_idx",
+          "columns": [
+            {
+              "expression": "obra_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "seq",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "apontamentos_obra_id_obras_id_fk": {
+          "name": "apontamentos_obra_id_obras_id_fk",
+          "tableFrom": "apontamentos",
+          "tableTo": "obras",
+          "columnsFrom": [
+            "obra_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "apontamentos_autor_id_usuarios_id_fk": {
+          "name": "apontamentos_autor_id_usuarios_id_fk",
+          "tableFrom": "apontamentos",
+          "tableTo": "usuarios",
+          "columnsFrom": [
+            "autor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.atividades": {
+      "name": "atividades",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "obra_id": {
+          "name": "obra_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "etapa_codigo": {
+          "name": "etapa_codigo",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "codigo": {
+          "name": "codigo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duracao_confirmada": {
+          "name": "duracao_confirmada",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "ordem": {
+          "name": "ordem",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "atividades_obra_idx": {
+          "name": "atividades_obra_idx",
+          "columns": [
+            {
+              "expression": "obra_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "atividades_obra_id_etapa_codigo_etapas_obra_obra_id_codigo_fk": {
+          "name": "atividades_obra_id_etapa_codigo_etapas_obra_obra_id_codigo_fk",
+          "tableFrom": "atividades",
+          "tableTo": "etapas_obra",
+          "columnsFrom": [
+            "obra_id",
+            "etapa_codigo"
+          ],
+          "columnsTo": [
+            "obra_id",
+            "codigo"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.baseline_itens": {
+      "name": "baseline_itens",
+      "schema": "",
+      "columns": {
+        "obra_id": {
+          "name": "obra_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "versao": {
+          "name": "versao",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "inicio": {
+          "name": "inicio",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fim": {
+          "name": "fim",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valor": {
+          "name": "valor",
+          "type": "numeric(14, 2)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "baseline_itens_obra_id_versao_baselines_obra_id_versao_fk": {
+          "name": "baseline_itens_obra_id_versao_baselines_obra_id_versao_fk",
+          "tableFrom": "baseline_itens",
+          "tableTo": "baselines",
+          "columnsFrom": [
+            "obra_id",
+            "versao"
+          ],
+          "columnsTo": [
+            "obra_id",
+            "versao"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "baseline_itens_obra_id_versao_item_id_pk": {
+          "name": "baseline_itens_obra_id_versao_item_id_pk",
+          "columns": [
+            "obra_id",
+            "versao",
+            "item_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.baselines": {
+      "name": "baselines",
+      "schema": "",
+      "columns": {
+        "obra_id": {
+          "name": "obra_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "versao": {
+          "name": "versao",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "congelada_em": {
+          "name": "congelada_em",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "autor_id": {
+          "name": "autor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "justificativa": {
+          "name": "justificativa",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "baselines_obra_id_obras_id_fk": {
+          "name": "baselines_obra_id_obras_id_fk",
+          "tableFrom": "baselines",
+          "tableTo": "obras",
+          "columnsFrom": [
+            "obra_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "baselines_autor_id_usuarios_id_fk": {
+          "name": "baselines_autor_id_usuarios_id_fk",
+          "tableFrom": "baselines",
+          "tableTo": "usuarios",
+          "columnsFrom": [
+            "autor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "baselines_obra_id_versao_pk": {
+          "name": "baselines_obra_id_versao_pk",
+          "columns": [
+            "obra_id",
+            "versao"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.etapas_obra": {
+      "name": "etapas_obra",
+      "schema": "",
+      "columns": {
+        "obra_id": {
+          "name": "obra_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "codigo": {
+          "name": "codigo",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valor_orcado": {
+          "name": "valor_orcado",
+          "type": "numeric(14, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valor_estimado": {
+          "name": "valor_estimado",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "predecessoras": {
+          "name": "predecessoras",
+          "type": "integer[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::integer[]"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "etapas_obra_obra_id_obras_id_fk": {
+          "name": "etapas_obra_obra_id_obras_id_fk",
+          "tableFrom": "etapas_obra",
+          "tableTo": "obras",
+          "columnsFrom": [
+            "obra_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "etapas_obra_obra_id_codigo_pk": {
+          "name": "etapas_obra_obra_id_codigo_pk",
+          "columns": [
+            "obra_id",
+            "codigo"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.gastos": {
+      "name": "gastos",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "obra_id": {
+          "name": "obra_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data": {
+          "name": "data",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "etapa_codigo": {
+          "name": "etapa_codigo",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "atividade_id": {
+          "name": "atividade_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "categoria": {
+          "name": "categoria",
+          "type": "categoria_gasto",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valor": {
+          "name": "valor",
+          "type": "numeric(14, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descricao": {
+          "name": "descricao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fornecedor": {
+          "name": "fornecedor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "documento": {
+          "name": "documento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "autor_id": {
+          "name": "autor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "importacao_id": {
+          "name": "importacao_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "exemplo": {
+          "name": "exemplo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {
+        "gastos_obra_idx": {
+          "name": "gastos_obra_idx",
+          "columns": [
+            {
+              "expression": "obra_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "data",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "gastos_importacao_idx": {
+          "name": "gastos_importacao_idx",
+          "columns": [
+            {
+              "expression": "importacao_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "gastos_obra_id_obras_id_fk": {
+          "name": "gastos_obra_id_obras_id_fk",
+          "tableFrom": "gastos",
+          "tableTo": "obras",
+          "columnsFrom": [
+            "obra_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "gastos_autor_id_usuarios_id_fk": {
+          "name": "gastos_autor_id_usuarios_id_fk",
+          "tableFrom": "gastos",
+          "tableTo": "usuarios",
+          "columnsFrom": [
+            "autor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.itens_atividade": {
+      "name": "itens_atividade",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "atividade_id": {
+          "name": "atividade_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "obra_id": {
+          "name": "obra_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "local_id": {
+          "name": "local_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "inicio_planejado": {
+          "name": "inicio_planejado",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fim_planejado": {
+          "name": "fim_planejado",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "inicio_real": {
+          "name": "inicio_real",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fim_real": {
+          "name": "fim_real",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "percentual": {
+          "name": "percentual",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "valor_orcado": {
+          "name": "valor_orcado",
+          "type": "numeric(14, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ordem": {
+          "name": "ordem",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "itens_obra_idx": {
+          "name": "itens_obra_idx",
+          "columns": [
+            {
+              "expression": "obra_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "itens_atividade_idx": {
+          "name": "itens_atividade_idx",
+          "columns": [
+            {
+              "expression": "atividade_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "itens_atividade_atividade_id_atividades_id_fk": {
+          "name": "itens_atividade_atividade_id_atividades_id_fk",
+          "tableFrom": "itens_atividade",
+          "tableTo": "atividades",
+          "columnsFrom": [
+            "atividade_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "itens_atividade_obra_id_obras_id_fk": {
+          "name": "itens_atividade_obra_id_obras_id_fk",
+          "tableFrom": "itens_atividade",
+          "tableTo": "obras",
+          "columnsFrom": [
+            "obra_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "itens_atividade_local_id_locais_id_fk": {
+          "name": "itens_atividade_local_id_locais_id_fk",
+          "tableFrom": "itens_atividade",
+          "tableTo": "locais",
+          "columnsFrom": [
+            "local_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.locais": {
+      "name": "locais",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "obra_id": {
+          "name": "obra_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "tipo_local",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo_pavimento": {
+          "name": "tipo_pavimento",
+          "type": "tipo_pavimento",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ordem": {
+          "name": "ordem",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "locais_obra_idx": {
+          "name": "locais_obra_idx",
+          "columns": [
+            {
+              "expression": "obra_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "locais_obra_id_obras_id_fk": {
+          "name": "locais_obra_id_obras_id_fk",
+          "tableFrom": "locais",
+          "tableTo": "obras",
+          "columnsFrom": [
+            "obra_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.modelos": {
+      "name": "modelos",
+      "schema": "",
+      "columns": {
+        "tipo": {
+          "name": "tipo",
+          "type": "tipo_obra",
+          "typeSchema": "public",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "dados": {
+          "name": "dados",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "atualizado_por": {
+          "name": "atualizado_por",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "modelos_atualizado_por_usuarios_id_fk": {
+          "name": "modelos_atualizado_por_usuarios_id_fk",
+          "tableFrom": "modelos",
+          "tableTo": "usuarios",
+          "columnsFrom": [
+            "atualizado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.obras": {
+      "name": "obras",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "tipo_obra",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "endereco": {
+          "name": "endereco",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "cidade": {
+          "name": "cidade",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "area_m2": {
+          "name": "area_m2",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "status": {
+          "name": "status",
+          "type": "status_obra",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'planejamento'"
+        },
+        "data_inicio": {
+          "name": "data_inicio",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "orcamento_total": {
+          "name": "orcamento_total",
+          "type": "numeric(14, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "engenheiro_id": {
+          "name": "engenheiro_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "encarregado_id": {
+          "name": "encarregado_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "exemplo": {
+          "name": "exemplo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "revisao": {
+          "name": "revisao",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "obras_engenheiro_idx": {
+          "name": "obras_engenheiro_idx",
+          "columns": [
+            {
+              "expression": "engenheiro_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "obras_encarregado_idx": {
+          "name": "obras_encarregado_idx",
+          "columns": [
+            {
+              "expression": "encarregado_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "obras_engenheiro_id_usuarios_id_fk": {
+          "name": "obras_engenheiro_id_usuarios_id_fk",
+          "tableFrom": "obras",
+          "tableTo": "usuarios",
+          "columnsFrom": [
+            "engenheiro_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "obras_encarregado_id_usuarios_id_fk": {
+          "name": "obras_encarregado_id_usuarios_id_fk",
+          "tableFrom": "obras",
+          "tableTo": "usuarios",
+          "columnsFrom": [
+            "encarregado_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sessoes": {
+      "name": "sessoes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "usuario_id": {
+          "name": "usuario_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "criada_em": {
+          "name": "criada_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "expira_em": {
+          "name": "expira_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "sessoes_usuario_idx": {
+          "name": "sessoes_usuario_idx",
+          "columns": [
+            {
+              "expression": "usuario_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "sessoes_usuario_id_usuarios_id_fk": {
+          "name": "sessoes_usuario_id_usuarios_id_fk",
+          "tableFrom": "sessoes",
+          "tableTo": "usuarios",
+          "columnsFrom": [
+            "usuario_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.usuarios": {
+      "name": "usuarios",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "perfil": {
+          "name": "perfil",
+          "type": "perfil",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "senha_hash": {
+          "name": "senha_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ativo": {
+          "name": "ativo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "exemplo": {
+          "name": "exemplo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "usuarios_email_un": {
+          "name": "usuarios_email_un",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.categoria_gasto": {
+      "name": "categoria_gasto",
+      "schema": "public",
+      "values": [
+        "material",
+        "mao_de_obra",
+        "equipamento",
+        "terceiros",
+        "outros"
+      ]
+    },
+    "public.perfil": {
+      "name": "perfil",
+      "schema": "public",
+      "values": [
+        "diretor",
+        "engenheiro",
+        "encarregado"
+      ]
+    },
+    "public.status_obra": {
+      "name": "status_obra",
+      "schema": "public",
+      "values": [
+        "planejamento",
+        "em_andamento",
+        "pausada",
+        "concluida"
+      ]
+    },
+    "public.tipo_local": {
+      "name": "tipo_local",
+      "schema": "public",
+      "values": [
+        "obra",
+        "pavimento",
+        "unidade"
+      ]
+    },
+    "public.tipo_obra": {
+      "name": "tipo_obra",
+      "schema": "public",
+      "values": [
+        "casa_terrea",
+        "geminadas",
+        "sobrado",
+        "predio_3_6",
+        "predio_7_mais",
+        "comercial"
+      ]
+    },
+    "public.tipo_pavimento": {
+      "name": "tipo_pavimento",
+      "schema": "public",
+      "values": [
+        "subsolo_garagem",
+        "terreo",
+        "terreo_comercial",
+        "tipo",
+        "cobertura",
+        "casa_maquinas"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

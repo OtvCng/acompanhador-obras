@@ -15,6 +15,27 @@
       "when": 1794255524627,
       "tag": "0001_apontamentos_seq",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794336221945,
+      "tag": "0002_gastos",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794416207588,
+      "tag": "0003_predecessoras_etapa",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794417694201,
+      "tag": "0004_alteracoes_cronograma",
+      "breakpoints": true
     }
   ]
 }

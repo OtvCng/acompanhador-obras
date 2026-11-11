@@ -157,6 +157,11 @@ export interface EtapaObra {
   valorOrcado: number;
   /** true = valor ainda é a estimativa do modelo (Q19). */
   valorEstimado: boolean;
+  /**
+   * Códigos das etapas desta obra que precisam TERMINAR antes desta começar (término→início, sem folga).
+   * Ausente/vazio = sem predecessora. Ver predecessoras.ts.
+   */
+  predecessoras?: number[];
   atividades: Atividade[];
 }
 
@@ -167,6 +172,28 @@ export interface Baseline {
   autorId: string;
   justificativa?: string; // obrigatória a partir da v2
   itens: Record<string, { inicio: ISODate; fim: ISODate; valor: number }>; // chave = ItemAtividade.id
+}
+
+/** Etapa ou atividade cuja data ficou a mais de N dias úteis da baseline inicial num save. */
+export interface DesvioCronograma {
+  tipo: 'etapa' | 'atividade';
+  codigo: string; // "3" para etapa, "3.02" para atividade
+  nome: string;
+  base: { inicio: ISODate; fim: ISODate };
+  antes: { inicio: ISODate; fim: ISODate };
+  depois: { inicio: ISODate; fim: ISODate };
+  /** Diferença em dias úteis contra a baseline inicial (+ = depois, − = antes). */
+  desvioInicio: number;
+  desvioFim: number;
+}
+
+/** Registro de um save do cronograma que precisou de justificativa (plano 2026-11-11-15-05). */
+export interface AlteracaoCronograma {
+  id: string;
+  data: ISODate;
+  autorId: string;
+  justificativa: string;
+  itens: DesvioCronograma[];
 }
 
 export interface Apontamento {
@@ -196,6 +223,10 @@ export interface Obra {
   etapas: EtapaObra[];
   baselines: Baseline[]; // vazio = ainda em planejamento, sem baseline
   apontamentos: Apontamento[];
+  /** Saves do cronograma com justificativa (desvio > 5 d.u. da baseline inicial). Só leitura no PUT. */
+  alteracoes?: AlteracaoCronograma[];
+  /** Gastos reais lançados (financeiro orçado x realizado, plano 2026-11-10). GET /api/obras já devolve. */
+  gastos: Gasto[];
   /** (Banco/API) Trava otimista: o PUT manda a revisão que leu; se outra pessoa salvou antes, a API responde 409. */
   revisao?: number;
   /** (Banco/API) Obra de demonstração ("Restaurar dados de exemplo" só mexe nestas). */
@@ -232,4 +263,102 @@ export interface PontoCurvaS {
   realizado: number | null; // null para datas futuras
   previstoValor: number; // R$ acumulado
   realizadoValor: number | null;
+}
+
+// ---------------------------------------------------------------------------
+// Financeiro: gastos reais (plano docs/planejamento/2026-11-10-15-37-financeiro-orcado-x-realizado.md)
+// ---------------------------------------------------------------------------
+export type CategoriaGasto = 'material' | 'mao_de_obra' | 'equipamento' | 'terceiros' | 'outros';
+
+export interface Gasto {
+  id: string;
+  obraId: string;
+  /** Data do gasto (competência). */
+  data: ISODate;
+  /** Etapa da EAP Caixa (obrigatória). */
+  etapaCodigo: number;
+  /** Atividade.id (opcional). Ausente = "Geral da etapa". */
+  atividadeId?: string;
+  categoria: CategoriaGasto;
+  /** R$ > 0, 2 casas. */
+  valor: number;
+  /** Obrigatório, curto. */
+  descricao: string;
+  fornecedor?: string;
+  /** Nº da nota/recibo. */
+  documento?: string;
+  autorId: string;
+  /** ISO datetime do servidor. */
+  criadoEm: string;
+  /** Lote de importação, se veio de planilha. */
+  importacaoId?: string;
+  /** (Banco/API) Gasto fictício das obras de exemplo. */
+  exemplo?: boolean;
+}
+
+/** O que a tela manda para lançar um gasto (o resto o servidor preenche). */
+export type NovoGasto = Omit<Gasto, 'id' | 'autorId' | 'criadoEm' | 'importacaoId' | 'exemplo'>;
+/** Campos editáveis de um gasto existente. null (ou '') em atividadeId/fornecedor/documento = apagar o campo. */
+export type EdicaoGasto = Partial<Omit<NovoGasto, 'obraId' | 'atividadeId' | 'fornecedor' | 'documento'>> & {
+  atividadeId?: string | null;
+  fornecedor?: string | null;
+  documento?: string | null;
+};
+
+export type FaixaCusto = 'dentro' | 'atencao' | 'acima' | 'sem_gastos';
+
+export interface IndicadoresCusto {
+  /** BAC: soma do valorOrcado. "Orçado". */
+  orcado: number;
+  /** EV: orçado × % físico apontado. "Valor do que foi feito". */
+  agregado: number;
+  /** PV: previsto até hoje pela baseline. "Previsto até hoje". */
+  previsto: number;
+  /** AC: soma dos gastos com data <= hoje. "Gasto real". */
+  gasto: number;
+  /** EV / AC; null se AC = 0. Só informativo (não define a faixa desde 10/11). */
+  cpi: number | null;
+  /**
+   * REGRA DE SALDO (decisão do Otavio, 10/11): o orçado é um saldo; cada gasto desconta dele.
+   * Só é estouro quando o gasto passa do orçado.
+   */
+  /** Orçado − gasto (pode ficar negativo quando estourou). "Saldo". */
+  saldo: number;
+  /** Gasto / orçado (fração 0..1+); null se orçado = 0. "% do orçado já usado". */
+  consumido: number | null;
+  /** max(0, gasto − orçado). "Estourou R$ X". */
+  estouro: number;
+  /** Gasto − orçado em R$ (positivo = estourou; negativo = ainda há saldo). */
+  desvio: number;
+  /** (gasto − orçado) / orçado; null se orçado = 0. Fração. */
+  desvioPct: number | null;
+  /** Custo previsto = max(orçado, gasto): o orçado, ou o que já foi gasto se passou dele. */
+  custoFinalProjetado: number;
+  /** Orçado − custo previsto (0 ou negativo = estouro). */
+  sobraProjetada: number;
+  faixa: FaixaCusto;
+}
+
+export interface CustoMes {
+  /** "AAAA-MM". */
+  mes: string;
+  gasto: number;
+  agregado: number;
+  previsto: number;
+  gastoAcum: number;
+  agregadoAcum: number;
+  previstoAcum: number;
+}
+
+/** Linha da planilha de importação depois de validada. `linha` = nº da linha na planilha (cabeçalho = 1). */
+export interface LinhaImportacao {
+  linha: number;
+  dados?: Omit<Gasto, 'id' | 'obraId' | 'autorId' | 'criadoEm' | 'importacaoId'>;
+  erros: string[];
+}
+
+export interface ResultadoImportacao {
+  gravadas: number;
+  importacaoId: string | null;
+  erros: LinhaImportacao[];
 }

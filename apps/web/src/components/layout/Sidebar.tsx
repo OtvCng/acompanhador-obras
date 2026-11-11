@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { Building2, HardHat, LayoutDashboard, Layers, PlusCircle, X } from 'lucide-react';
+import { Building2, HardHat, LayoutDashboard, Layers, Users, X } from 'lucide-react';
 import type { Perfil } from '@obras/shared';
 import { useObras } from '@/store';
 import { cn } from '@/lib/utils';
@@ -15,10 +15,10 @@ interface ItemMenu {
 
 const ITENS: ItemMenu[] = [
   { to: '/', rotulo: 'Painel', icone: LayoutDashboard, ativo: (p) => p === '/' },
-  { to: '/obras', rotulo: 'Obras', icone: Building2, ativo: (p) => p.startsWith('/obras') && !p.startsWith('/obras/nova') },
-  { to: '/obras/nova', rotulo: 'Nova obra', icone: PlusCircle, esconderPara: ['encarregado'], ativo: (p) => p.startsWith('/obras/nova') },
+  { to: '/obras', rotulo: 'Obras', icone: Building2, ativo: (p) => p.startsWith('/obras') },
   { to: '/campo', rotulo: 'Campo', icone: HardHat, ativo: (p) => p.startsWith('/campo') },
   { to: '/modelos', rotulo: 'Modelos', icone: Layers, esconderPara: ['encarregado'], ativo: (p) => p.startsWith('/modelos') },
+  { to: '/usuarios', rotulo: 'Usuários', icone: Users, esconderPara: ['engenheiro', 'encarregado'], ativo: (p) => p.startsWith('/usuarios') },
 ];
 
 const NOME_PERFIL: Record<Perfil, string> = { diretor: 'Diretor', engenheiro: 'Engenheiro', encarregado: 'Encarregado' };

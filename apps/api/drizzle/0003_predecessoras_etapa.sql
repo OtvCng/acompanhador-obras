@@ -1,0 +1,1 @@
+ALTER TABLE "etapas_obra" ADD COLUMN "predecessoras" integer[] DEFAULT '{}'::integer[] NOT NULL;

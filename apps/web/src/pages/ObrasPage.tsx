@@ -28,13 +28,15 @@ import {
 import { formatBRL, formatData, formatPctFracao, formatPP, formatSPI } from '@/lib/format';
 import { NOMES_STATUS, SemObras, corBarra, useResumos, type ResumoObra } from './obra/comum';
 import { cn } from '@/lib/utils';
+import { CustoBadge, corCusto, formatDesvioPct, useCustos } from './obra/custo';
+import type { IndicadoresCusto } from '@obras/shared';
 
-type Coluna = 'nome' | 'tipo' | 'realizado' | 'spi' | 'desvio' | 'fim' | 'orcamento';
+type Coluna = 'nome' | 'tipo' | 'realizado' | 'spi' | 'desvio' | 'fim' | 'orcamento' | 'custo';
 const TODOS = 'todos';
 
 const ORDEM_FAIXA_NUM: Record<FaixaSaude, number> = Object.fromEntries(ORDEM_FAIXAS.map((f, i) => [f, i])) as Record<FaixaSaude, number>;
 
-function valorOrdenacao(r: ResumoObra, c: Coluna): number | string {
+function valorOrdenacao(r: ResumoObra, c: Coluna, custo?: IndicadoresCusto): number | string {
   switch (c) {
     case 'nome':
       return r.obra.nome.toLocaleLowerCase('pt-BR');
@@ -50,6 +52,9 @@ function valorOrdenacao(r: ResumoObra, c: Coluna): number | string {
       return r.fim;
     case 'orcamento':
       return r.obra.orcamentoTotal;
+    case 'custo':
+      // Por desvio % (gasto x valor feito). Sem gasto fica abaixo de tudo: no começo da crescente, no fim da decrescente.
+      return custo && custo.gasto > 0 ? (custo.consumido ?? Number.POSITIVE_INFINITY) : Number.NEGATIVE_INFINITY;
   }
 }
 
@@ -57,6 +62,7 @@ export default function ObrasPage() {
   const { usuarioAtual } = useObras();
   const obras = useObrasVisiveis();
   const resumos = useResumos(obras);
+  const custos = useCustos(obras);
   const navigate = useNavigate();
   const verValores = podeVerValores(usuarioAtual.perfil);
   const podeCriar = usuarioAtual.perfil !== 'encarregado';
@@ -77,13 +83,13 @@ export default function ObrasPage() {
         (!q || `${r.obra.nome} ${r.obra.cidade} ${r.obra.endereco}`.toLocaleLowerCase('pt-BR').includes(q)),
     );
     return f.sort((a, b) => {
-      const va = valorOrdenacao(a, ordem.col);
-      const vb = valorOrdenacao(b, ordem.col);
+      const va = valorOrdenacao(a, ordem.col, custos.get(a.obra.id));
+      const vb = valorOrdenacao(b, ordem.col, custos.get(b.obra.id));
       const c = typeof va === 'string' ? va.localeCompare(vb as string, 'pt-BR') : va - (vb as number);
       if (c === 0) return ORDEM_FAIXA_NUM[a.ind.faixa] - ORDEM_FAIXA_NUM[b.ind.faixa];
       return ordem.asc ? c : -c;
     });
-  }, [resumos, busca, tipo, faixa, status, ordem]);
+  }, [resumos, custos, busca, tipo, faixa, status, ordem]);
 
   const filtrando = busca || tipo !== TODOS || faixa !== TODOS || status !== TODOS;
 
@@ -199,13 +205,14 @@ export default function ObrasPage() {
                 <Cab col="desvio">Desvio</Cab>
                 <Cab col="fim">Fim previsto</Cab>
                 {verValores && <Cab col="orcamento">Orçamento</Cab>}
+                {verValores && <Cab col="custo">Custo</Cab>}
                 <TableHead>Saúde</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {lista.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={verValores ? 9 : 8} className="py-10 text-center text-sm text-muted">
+                  <TableCell colSpan={verValores ? 10 : 8} className="py-10 text-center text-sm text-muted">
                     Nenhuma obra corresponde aos filtros.
                   </TableCell>
                 </TableRow>
@@ -240,6 +247,7 @@ export default function ObrasPage() {
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-gray-700">{formatData(r.fim)}</TableCell>
                   {verValores && <TableCell className="whitespace-nowrap text-gray-700">{formatBRL(r.obra.orcamentoTotal)}</TableCell>}
+                  {verValores && <CelulaCusto c={custos.get(r.obra.id)} />}
                   <TableCell>
                     <SaudeBadge faixa={r.ind.faixa} />
                   </TableCell>
@@ -250,5 +258,20 @@ export default function ObrasPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+/** Badge da faixa de custo + desvio % (gasto real x valor do que foi feito). */
+function CelulaCusto({ c }: { c?: IndicadoresCusto }) {
+  if (!c) return <TableCell />;
+  return (
+    <TableCell className="whitespace-nowrap">
+      <Dica texto={c.gasto > 0 ? `Gasto ${formatBRL(c.gasto)} de ${formatBRL(c.orcado)} orçados · ${c.estouro > 0.005 ? `estourou ${formatBRL(c.estouro)}` : `saldo ${formatBRL(c.saldo)}`}` : 'Nenhum gasto lançado nesta obra'}>
+        <span className="inline-flex items-center gap-1.5">
+          <CustoBadge faixa={c.faixa} curto />
+          {c.gasto > 0 && <span className={cn('text-xs font-semibold', corCusto(c.faixa))}>{formatDesvioPct(c)}</span>}
+        </span>
+      </Dica>
+    </TableCell>
   );
 }

@@ -1,0 +1,12 @@
+Ótimo trabalho no motor e no store. Nova entrega para você, FUNDAÇÃO: Docker e guia de deploy no Coolify. SÓ PREPARAÇÃO E DOCUMENTAÇÃO: não publique nada, não crie remoto git, não faça login em registry, não faça deploy.
+
+Não mexa em apps/web/src/** nem em packages/shared/src/** agora (as telas estão sendo validadas e vem uma revisão). Se achar bug no seu código, anote na nota e espere.
+
+Arquivos seus nesta entrega:
+1) Dockerfile na raiz, multi-stage: estágio de build com node 22 alpine + corepack (pnpm 9, que é o packageManager do repo), pnpm install --frozen-lockfile, pnpm --filter @obras/web build; estágio final com nginx alpine servindo apps/web/dist com fallback de SPA (try_files para index.html), cache longo para /assets e sem cache para index.html, gzip ligado. Atenção: o package.json da raiz tem um override de rollup para @rollup/wasm-node (o Windows bloqueou o binário nativo aqui); no Linux do container isso também funciona, então mantenha.
+2) docker/nginx.conf usado pelo Dockerfile.
+3) .dockerignore (node_modules, dist, .turbo, .git, docs/handover/briefings etc.).
+4) docker-compose.yml com um serviço web expondo a porta 8080 -> 80, healthcheck simples.
+5) docs/deploy/2026-11-09-coolify.md, em pt-BR: o que o app é hoje (front com dados mock no localStorage de cada navegador, sem backend e sem login real, ou seja, cada pessoa vê os próprios dados e eles somem se limpar o navegador: deixe isso BEM explícito), pré-requisitos, passo a passo no Coolify (criar recurso a partir de repositório Git com build pack Dockerfile ou Docker Compose, porta, domínio, HTTPS, redeploy), como testar local (docker compose up --build), e o que muda quando tiver backend. Não invente telas ou nomes de menus do Coolify que você não tem certeza: onde não tiver certeza, escreva "conferir na versão do Coolify instalada".
+
+Validação: pnpm --filter @obras/web build tem que passar. Se o docker estiver instalado e rodando nesta máquina, rode docker compose build e um teste com curl em localhost:8080 e derrube o container depois; se não estiver, diga que não testou o container. Commit local só dos arquivos acima, mensagem em pt-BR terminando com "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>", marque o item "Docker/compose/Coolify" na nota e me responda com um resumo curto.

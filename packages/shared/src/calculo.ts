@@ -138,7 +138,11 @@ function todosItens(obra: Obra): ItemAtividade[] {
   return obra.etapas.flatMap((e) => e.atividades.flatMap((a) => a.itens));
 }
 
-export function baselineVigente(obra: Obra): Baseline | null { return obra.baselines.at(-1) ?? null; }
+/**
+ * Régua de atraso: a baseline INICIAL (v1), que é fixa. Decisão do Otavio em 11/11 (plano 2026-11-11-15-05):
+ * mudanças de prazo não geram nova versão; vão para o histórico de alterações com justificativa.
+ */
+export function baselineVigente(obra: Obra): Baseline | null { return obra.baselines[0] ?? null; }
 
 function fracaoLinear(inicio: ISODate, fim: ISODate, hoje: ISODate): number {
   if (hoje < inicio) return 0;

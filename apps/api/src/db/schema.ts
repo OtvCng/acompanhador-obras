@@ -81,6 +81,8 @@ export const etapasObra = pgTable('etapas_obra', {
   nome: text('nome').notNull(),
   valorOrcado: valor('valor_orcado').notNull(),
   valorEstimado: boolean('valor_estimado').notNull().default(true),
+  /** Códigos das etapas predecessoras (término→início). Plano 2026-11-11-14-10. */
+  predecessoras: integer('predecessoras').array().notNull().default(sql`'{}'::integer[]`),
 }, (t) => [primaryKey({ columns: [t.obraId, t.codigo] })]);
 
 export const atividades = pgTable('atividades', {
@@ -150,6 +152,20 @@ export const apontamentos = pgTable('apontamentos', {
   seq: bigint('seq', { mode: 'number' }).generatedAlwaysAsIdentity(),
 }, (t) => [index('apontamentos_obra_idx').on(t.obraId, t.seq)]);
 
+/**
+ * Saves do cronograma que precisaram de justificativa (desvio > 5 d.u. da baseline inicial). Só cresce.
+ * `itens` guarda a lista de DesvioCronograma do shared. Plano 2026-11-11-15-05.
+ */
+export const alteracoesCronograma = pgTable('alteracoes_cronograma', {
+  id: text('id').primaryKey(),
+  obraId: text('obra_id').notNull().references(() => obras.id, { onDelete: 'cascade' }),
+  data: date('data').notNull(),
+  autorId: text('autor_id').notNull().references(() => usuarios.id),
+  justificativa: text('justificativa').notNull(),
+  itens: jsonb('itens').notNull(),
+  criadoEm: criadoEm(),
+}, (t) => [index('alteracoes_cronograma_obra_idx').on(t.obraId, t.criadoEm)]);
+
 // ---------------------------------------------------------------------------
 // Modelos editados (sem linha = modelo padrão do código, MODELOS do shared)
 // ---------------------------------------------------------------------------
@@ -159,3 +175,30 @@ export const modelos = pgTable('modelos', {
   atualizadoPor: text('atualizado_por').references(() => usuarios.id),
   atualizadoEm: timestamp('atualizado_em', { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ---------------------------------------------------------------------------
+// Gastos reais (financeiro orçado x realizado, plano 2026-11-10-15-37)
+// ---------------------------------------------------------------------------
+export const categoriaGastoEnum = pgEnum('categoria_gasto', ['material', 'mao_de_obra', 'equipamento', 'terceiros', 'outros']);
+
+/** Sem FK para etapa/atividade: o replanejamento pode remover a atividade e o gasto continua (cai em "Geral da etapa"). */
+export const gastos = pgTable('gastos', {
+  id: text('id').primaryKey(),
+  obraId: text('obra_id').notNull().references(() => obras.id, { onDelete: 'cascade' }),
+  data: date('data').notNull(),
+  etapaCodigo: integer('etapa_codigo').notNull(),
+  atividadeId: text('atividade_id'),
+  categoria: categoriaGastoEnum('categoria').notNull(),
+  valor: valor('valor').notNull(),
+  descricao: text('descricao').notNull(),
+  fornecedor: text('fornecedor'),
+  documento: text('documento'),
+  autorId: text('autor_id').notNull().references(() => usuarios.id),
+  criadoEm: criadoEm(),
+  /** Lote da importação de planilha (DELETE /api/importacoes/:id desfaz o lote). */
+  importacaoId: text('importacao_id'),
+  exemplo: boolean('exemplo').notNull().default(false),
+}, (t) => [
+  index('gastos_obra_idx').on(t.obraId, t.data),
+  index('gastos_importacao_idx').on(t.importacaoId),
+]);

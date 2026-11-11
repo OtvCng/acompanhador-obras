@@ -18,7 +18,9 @@ describe('seed', () => {
   it('6 obras, uma por tipo, com baseline', () => {
     expect(new Set(obras.map((o) => o.tipo)).size).toBe(6);
     for (const o of obras) expect(o.baselines.length).toBeGreaterThan(0);
-    expect(obras.some((o) => o.baselines.length >= 2 && o.baselines[1].justificativa)).toBe(true);
+    // Baseline inicial fixa (plano 2026-11-11-15-05): ninguém tem v2; o replanejamento justificado vai para o histórico.
+    for (const o of obras) expect(o.baselines.length).toBe(1);
+    expect(obras.some((o) => (o.alteracoes ?? []).some((a) => a.justificativa && a.itens.length > 0))).toBe(true);
   });
 
   it('estados variados em hoje', () => {

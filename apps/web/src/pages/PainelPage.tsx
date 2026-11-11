@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Activity, AlertTriangle, Building2, CalendarClock, Gauge, Percent, Wallet } from 'lucide-react';
-import { NOMES_TIPO, type FaixaSaude } from '@obras/shared';
+import { Activity, AlertTriangle, Building2, CalendarClock, Gauge, Percent, Receipt, Wallet } from 'lucide-react';
+import { FAIXAS_CUSTO, NOMES_TIPO, type FaixaSaude, type IndicadoresCusto } from '@obras/shared';
 import { useObras, useObrasVisiveis, podeVerValores } from '@/store';
 import { BarraDupla, Card, CardContent, CardDescription, CardHeader, CardTitle, Dica, SAUDE, SaudeBadge, SaudePonto, corDesvio } from '@/components/ui';
 import { DistribuicaoSaude } from '@/components/charts';
-import { formatBRLCompacto, formatBRL, formatData, formatPctFracao, formatPP, formatSPI } from '@/lib/format';
+import { formatBRLCompacto, formatBRL, formatData, formatPct, formatPctFracao, formatPP, formatSPI } from '@/lib/format';
 import { Kpi, SemObras, corBarra, precisaAtencao, resumirEtapas, useResumos, type ResumoObra } from './obra/comum';
 import { cn } from '@/lib/utils';
+import { CustoBadge, corCusto, custoPortfolio, formatDesvioPct, useCustos } from './obra/custo';
 
 export default function PainelPage() {
   const { usuarioAtual, hoje } = useObras();
@@ -15,6 +16,8 @@ export default function PainelPage() {
   const resumos = useResumos(obras);
   const verValores = podeVerValores(usuarioAtual.perfil);
   const [filtroFaixa, setFiltroFaixa] = useState<FaixaSaude | null>(null);
+  const custos = useCustos(obras);
+  const portfolio = useMemo(() => custoPortfolio(custos.values()), [custos]);
 
   const k = useMemo(() => {
     const ativas = resumos.filter((r) => r.obra.status === 'em_andamento');
@@ -53,7 +56,7 @@ export default function PainelPage() {
         </div>
       </div>
 
-      <div className={cn('grid grid-cols-2 gap-3 md:grid-cols-3', verValores ? 'xl:grid-cols-6' : 'xl:grid-cols-5')}>
+      <div className={cn('grid grid-cols-2 gap-3', verValores ? 'md:grid-cols-4 xl:grid-cols-7' : 'md:grid-cols-3 xl:grid-cols-5')}>
         <Kpi titulo="Obras ativas" valor={k.ativas} detalhe={`de ${resumos.length} no portfólio`} icone={Building2} tom="azul" />
         <Kpi titulo="Físico médio (ponderado)" valor={formatPctFracao(k.fisico)} detalhe="peso = orçamento de cada obra" icone={Percent} />
         <Kpi
@@ -73,6 +76,7 @@ export default function PainelPage() {
             icone={Wallet}
           />
         )}
+        {verValores && <KpiCusto p={portfolio} />}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-5">
@@ -137,7 +141,7 @@ export default function PainelPage() {
         </div>
         <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
           {cards.map((r) => (
-            <CardObra key={r.obra.id} r={r} verValores={verValores} />
+            <CardObra key={r.obra.id} r={r} verValores={verValores} custo={custos.get(r.obra.id)} />
           ))}
         </div>
       </div>
@@ -145,7 +149,7 @@ export default function PainelPage() {
   );
 }
 
-function CardObra({ r, verValores }: { r: ResumoObra; verValores: boolean }) {
+function CardObra({ r, verValores, custo }: { r: ResumoObra; verValores: boolean; custo?: IndicadoresCusto }) {
   const { obra, ind } = r;
   return (
     <Link to={`/obras/${obra.id}`} className="group block">
@@ -197,11 +201,43 @@ function CardObra({ r, verValores }: { r: ResumoObra; verValores: boolean }) {
           </div>
         </div>
         {verValores && (
-          <div className="mt-2 text-xs text-muted">
-            Orçamento {formatBRL(obra.orcamentoTotal)}
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted">
+            <span>Orçamento {formatBRL(obra.orcamentoTotal)}</span>
+            {custo && (
+              <span className="inline-flex items-center gap-1.5">
+                Custo
+                <CustoBadge faixa={custo.faixa} curto />
+                {custo.gasto > 0 && <b className={corCusto(custo.faixa)}>{formatDesvioPct(custo)}</b>}
+              </span>
+            )}
           </div>
         )}
       </Card>
     </Link>
+  );
+}
+
+/** Custo do portfólio pela regra de saldo: quanto já foi gasto do orçado e quantas obras passaram do orçado. */
+function KpiCusto({ p }: { p: ReturnType<typeof custoPortfolio> }) {
+  if (p.obras === 0) return <Kpi titulo="Custo do portfólio" valor="-" detalhe="nenhum gasto lançado ainda" icone={Receipt} />;
+  const uso = p.consumido ?? 0;
+  const tom = p.obrasEstouradas > 0 ? 'vermelho' : uso >= FAIXAS_CUSTO.atencao ? 'amarelo' : 'verde';
+  return (
+    <Kpi
+      titulo="Custo do portfólio"
+      valor={formatBRLCompacto(p.gasto)}
+      detalhe={
+        <>
+          gasto de {formatBRLCompacto(p.orcado)} orçados ({formatPct(uso * 100)}) ·{' '}
+          <b className={cn(tom === 'vermelho' ? 'text-saude-vermelho' : 'text-saude-verde')}>
+            {p.obrasEstouradas > 0
+              ? `${p.obrasEstouradas} obra${p.obrasEstouradas > 1 ? 's' : ''} ${p.obrasEstouradas > 1 ? "estouraram" : "estourou"} (${formatBRLCompacto(p.estouro)})`
+              : 'nenhuma obra estourou'}
+          </b>
+        </>
+      }
+      icone={Receipt}
+      tom={tom}
+    />
   );
 }

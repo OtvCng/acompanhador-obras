@@ -6,7 +6,7 @@
  */
 import type { Apontamento, ISODate, Obra, ParametrosNovaObra, Usuario } from '@obras/shared';
 import {
-  addDiasUteis, ajustarValorEtapa, congelarBaseline, contarDiasUteis, diaDaSemana, ehDiaUtil, gerarObra,
+  addDiasUteis, ajustarValorEtapa, congelarBaseline, contarDiasUteis, desviosParaJustificar, diaDaSemana, ehDiaUtil, gerarObra,
   proximoDiaUtil, addDias,
 } from '@obras/shared';
 
@@ -175,7 +175,9 @@ export function criarSeed(hoje: ISODate = HOJE_SEED): Obra[] {
     obras.push(o);
   }
 
-  // 4) Prédio 3-6: NO PRAZO, com baseline v2 (replanejamento justificado)
+  // 4) Prédio 3-6: NO PRAZO, com uma alteração de prazo justificada no histórico.
+  // Baseline inicial fixa (plano 2026-11-11-15-05): o replanejamento não vira v2; adia só o que vem
+  // daqui a 3 semanas e fica registrado com justificativa, então o "no prazo" de hoje continua valendo.
   {
     let o = gerarObra(base({
       nome: 'Edifício Exemplo Santa Terezinha', tipo: 'predio_3_6', endereco: 'Avenida Fictícia, 1500',
@@ -183,10 +185,19 @@ export function criarSeed(hoje: ISODate = HOJE_SEED): Obra[] {
       engenheiroId: ENG_BRUNO, encarregadoId: ENC_ZE,
     }), 'obra-predio36');
     o = congelarBaseline(o, diretor, '2026-02-27');
-    o = replanejar(o, '2026-07-06', 20);
-    o = congelarBaseline(o, ENG_BRUNO, '2026-07-06',
-      'Chuvas acima da média em junho e atraso na entrega do aço da laje do 2º pavimento. Prazo estendido em 20 dias úteis, aprovado pela diretoria.');
     o = simular(o, { k: 1.0, hoje, semente: 44 });
+    const antes = o;
+    o = replanejar(o, addDiasUteis(hoje, 15), 8);
+    const itens = desviosParaJustificar(antes, o);
+    if (itens.length) {
+      o = {
+        ...o,
+        alteracoes: [{
+          id: 'alt-exemplo-predio36', data: addDias(hoje, -2), autorId: ENG_BRUNO, itens,
+          justificativa: 'Atraso na entrega das esquadrias pelo fornecedor. Etapas finais adiadas em 8 dias úteis, aprovado pela diretoria.',
+        }],
+      };
+    }
     obras.push(o);
   }
 

@@ -1,9 +1,10 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, CalendarClock, CheckCircle2, ChevronDown, ChevronRight, Hammer } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CalendarClock, CheckCircle2, ChevronDown, ChevronRight, Hammer, Receipt, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
-import { useObra, useObras, useObrasVisiveis } from '@/store';
-import { Aviso, BarraProgresso, EstadoVazio, Selo, cn } from '@/components/campo/ui';
+import { useObra, useObras, useObrasVisiveis, podeVerValores } from '@/store';
+import { Aviso, Botao, BarraProgresso, EstadoVazio, Selo, cn } from '@/components/campo/ui';
+import FormGasto from '../gastos/FormGasto';
 import { formatarDataCurta, formatarPctInteiro } from '@/components/campo/formatos';
 import { abaixoDoPrevisto, agruparItens, itensDaObra, type ItemCampo } from './itens';
 import FolhaApontamento, { toastApontamento } from './FolhaApontamento';
@@ -98,6 +99,7 @@ export default function CampoObra() {
   const visiveis = useObrasVisiveis();
   const [localId, setLocalId] = useState<string>(TODOS);
   const [alvoId, setAlvoId] = useState<string | null>(null);
+  const [gastoAberto, setGastoAberto] = useState(false);
 
   const itens = useMemo(() => (obra ? itensDaObra(obra, hoje) : []), [obra, hoje]);
   const locais = useMemo(() => {
@@ -130,6 +132,7 @@ export default function CampoObra() {
       })()
     : 0;
   const mostrarLocal = localId === TODOS;
+  const verValores = podeVerValores(usuarioAtual.perfil);
   const abrir = (x: ItemCampo) => () => setAlvoId(x.item.id);
 
   const salvar = (a: { itemId: string; percentualNovo: number; observacao?: string; fotos: string[] }) => {
@@ -155,6 +158,20 @@ export default function CampoObra() {
           <span className="shrink-0 text-sm font-semibold tabular-nums">{formatarPctInteiro(realizadoLocal)}</span>
         </div>
         <div className="mt-1 text-xs text-muted">{localId === TODOS ? 'Avanço da obra' : `Avanço em ${locais.find((l) => l.id === localId)?.nome ?? 'local'}`}</div>
+        {verValores && (
+          // Gastos do canteiro (nota da loja, diária): lança daqui sem sair do Campo.
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Botao variante="secundario" onClick={() => setGastoAberto(true)}>
+              <Receipt className="size-4" aria-hidden /> Lançar gasto
+            </Botao>
+            <Link
+              to={`/obras/${obra.id}?aba=gastos`}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium text-gray-800 hover:bg-gray-100"
+            >
+              <ListChecks className="size-4" aria-hidden /> Ver gastos
+            </Link>
+          </div>
+        )}
       </div>
 
       {!temAcesso && (
@@ -210,6 +227,7 @@ export default function CampoObra() {
       )}
 
       <FolhaApontamento obra={obra} alvo={alvo} hoje={hoje} aoFechar={() => setAlvoId(null)} aoSalvar={salvar} />
+      {verValores && <FormGasto obra={obra} aberto={gastoAberto} aoMudar={setGastoAberto} />}
     </div>
   );
 }

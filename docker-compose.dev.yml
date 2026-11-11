@@ -1,5 +1,8 @@
-# Postgres de desenvolvimento. Subir: docker compose -f docker-compose.dev.yml up -d
+# Postgres de desenvolvimento. Subir: docker compose -f docker-compose.dev.yml up -d  (ou pnpm db:subir)
 # Porta 5433 no host (evita conflito com um Postgres instalado no Windows).
+# Projeto com nome próprio: sem isso ele colide com o docker-compose.yml de produção (os dois têm o serviço "db").
+name: obras-dev
+
 services:
   db:
     image: postgres:16-alpine
@@ -21,3 +24,5 @@ services:
 
 volumes:
   obras-db-dev:
+    # Nome fixo (é o volume criado na primeira versão deste arquivo; mantém os dados de dev).
+    name: acompanhador-obras_obras-db-dev

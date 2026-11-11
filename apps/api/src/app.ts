@@ -7,6 +7,7 @@ import { ErroHttp, lerSessao } from './auth/sessao';
 import { rotasAuth } from './rotas/auth';
 import { rotasObras } from './rotas/obras';
 import { rotasModelos } from './rotas/modelos';
+import { rotasGastos } from './rotas/gastos';
 
 export async function criarApp() {
   const app = Fastify({
@@ -37,5 +38,6 @@ export async function criarApp() {
   await app.register(rotasAuth);
   await app.register(rotasObras);
   await app.register(rotasModelos);
+  await app.register(rotasGastos);
   return app;
 }

@@ -5,6 +5,10 @@
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "dev": "pnpm --filter @obras/web dev",
+    "dev:api": "pnpm --filter @obras/api dev",
+    "db:subir": "docker compose -f docker-compose.dev.yml up -d",
+    "db:setup": "pnpm --filter @obras/api db:setup",
+    "db:exemplos": "pnpm --filter @obras/api db:exemplos",
     "build": "turbo run build",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck"

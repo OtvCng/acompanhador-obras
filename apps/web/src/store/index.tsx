@@ -1,197 +1,392 @@
 /**
- * STORE MOCK (contrato). Dono da implementação: Fundação.
- * Sem banco (Q3): estado em memória + localStorage (chave 'obras:v1'), com "Restaurar dados de exemplo".
- * As telas usam SÓ estes hooks; nunca mexem em localStorage diretamente.
+ * STORE com API + Postgres (plano docs/planejamento/2026-11-09-14-47-banco-postgres-api.md).
+ * Mantém a MESMA interface do store mock: as telas não sabem que existe servidor.
+ *
+ * Como funciona:
+ * - Login obrigatório: sem sessão, o Provider mostra a tela de login no lugar do app.
+ * - Cada mudança é aplicada na hora na tela (otimista) e entra numa fila POR OBRA, enviada em ordem.
+ *   "Criar" e "gravar" seguidos são juntados: o envio sempre manda a versão mais recente da obra.
+ * - Se o servidor recusar, aparece um toast e a obra é recarregada do servidor.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { Obra, Usuario, Perfil, ParametrosNovaObra, ISODate, ModeloObra, TipoObra, Apontamento } from '@obras/shared';
-import { MODELOS, gerarObra, congelarBaseline as congelarBaselineObra } from '@obras/shared';
-import { criarSeed, HOJE_SEED, USUARIOS } from '@/data/seed';
+import { toast } from 'sonner';
+import type { Obra, Usuario, Perfil, ParametrosNovaObra, ISODate, ModeloObra, TipoObra, Gasto, NovoGasto, EdicaoGasto, ResultadoImportacao } from '@obras/shared';
+import { MODELOS, OCULTAR_VALORES_ENCARREGADO, gerarObra, congelarBaseline as congelarBaselineObra, aplicarApontamento } from '@obras/shared';
+import { api, ErroApi, hojeLocal, mensagemErro } from '@/lib/api';
+import LoginPage from '@/pages/LoginPage';
 
 export interface ObrasStore {
   obras: Obra[];
   usuarios: Usuario[];
-  /** Usuário simulado (Q5). O seletor no topo troca este usuário. */
+  /** Usuário logado. */
   usuarioAtual: Usuario;
+  /** Mantido por compatibilidade; com login real não troca de usuário. */
   setUsuarioAtual: (id: string) => void;
-  /** "Hoje" do sistema. Fixo nos dados de exemplo para a demo ser reproduzível; editável na Topbar. */
+  /** Data de referência dos cálculos na tela. Começa na data real; os apontamentos usam a data do servidor. */
   hoje: ISODate;
   setHoje: (d: ISODate) => void;
 
   criarObra: (p: ParametrosNovaObra) => Obra;
-  atualizarObra: (obra: Obra) => void;
+  /** `justificativa`: obrigatória quando o save muda prazo > 5 d.u. da baseline inicial (a API confere). */
+  atualizarObra: (obra: Obra, opcoes?: { justificativa?: string }) => void;
   congelarBaseline: (obraId: string, justificativa?: string) => void;
   lancarApontamento: (a: { obraId: string; itemId: string; percentualNovo: number; observacao?: string; fotos?: string[] }) => void;
+  /** Diretor: recria só as obras de exemplo no servidor. */
   restaurarExemplos: () => void;
 
-  /** Modelos editáveis (Q12). Começam como cópia de MODELOS; edição persiste no localStorage. */
   modelos: Record<TipoObra, ModeloObra>;
   atualizarModelo: (m: ModeloObra) => void;
   restaurarModelos: () => void;
+  /** Volta UM modelo ao padrão do código (apaga a versão editada no servidor). */
+  restaurarModelo: (tipo: TipoObra) => void;
+
+  // --- Novos com o banco ---
+  /** true enquanto há alterações esperando o servidor. */
+  sincronizando: boolean;
+  sair: () => Promise<void>;
+  recarregar: () => Promise<void>;
+  recarregarUsuarios: () => Promise<void>;
+  excluirObra: (obraId: string) => Promise<void>;
+
+  // --- Financeiro: gastos reais (plano 2026-11-10) ---
+  /** Lança um gasto (otimista; fila por obra). Devolve o gasto com id provisório. */
+  lancarGasto: (g: NovoGasto) => Gasto;
+  /** Edita campos de um gasto (otimista; fila por obra). */
+  editarGasto: (id: string, parcial: EdicaoGasto) => void;
+  /** Exclui um gasto (otimista; fila por obra). */
+  excluirGasto: (id: string) => void;
+  /** Envia as linhas da planilha; o servidor revalida e grava só as válidas (tudo ou nada). Recarrega a obra. */
+  importarGastos: (obraId: string, linhas: Record<string, string>[]) => Promise<ResultadoImportacao>;
+  /** Desfaz um lote importado inteiro. Recarrega a obra. */
+  desfazerImportacao: (obraId: string, importacaoId: string) => Promise<void>;
 }
 
 const Ctx = createContext<ObrasStore | null>(null);
 
-// ---------------------------------------------------------------------------
-// Persistência
-// ---------------------------------------------------------------------------
-const CHAVE_OBRAS = 'obras:v1';
-const CHAVE_MODELOS = 'obras:modelos:v1';
-/** Versão do estado salvo em obras:v1. Subir quando o seed ou o formato mudar: quem tem versão antiga volta ao seed. */
-const VERSAO = 2; // 2 = seed do galpão com uma etapa só fora da faixa (revisão 2026-11-09, achado #3)
-const VERSAO_MODELOS = 1;
+type Operacao =
+  | { tipo: 'criar' }
+  | { tipo: 'gravar'; justificativa?: string }
+  | { tipo: 'baseline'; justificativa?: string }
+  | { tipo: 'apontamento'; itemId: string; percentualNovo: number; observacao?: string; fotos?: string[] }
+  | { tipo: 'gasto_novo'; gasto: Gasto }
+  | { tipo: 'gasto_editar'; id: string; parcial: Record<string, unknown> }
+  | { tipo: 'gasto_excluir'; id: string }
+  | { tipo: 'gasto_importar'; linhas: Record<string, string>[]; ok: (r: ResultadoImportacao) => void; falha: (e: unknown) => void }
+  | { tipo: 'gasto_desfazer'; importacaoId: string; ok: () => void; falha: (e: unknown) => void };
 
-interface EstadoSalvo { versao: number; obras: Obra[]; usuarioAtualId: string; hoje: ISODate }
-interface ModelosSalvos { versao: number; modelos: Record<TipoObra, ModeloObra> }
+/** Operações com promessa própria: o erro vai para quem chamou (a tela mostra), sem o toast genérico. */
+const comRetorno = (op: Operacao): op is Extract<Operacao, { tipo: 'gasto_importar' | 'gasto_desfazer' }> =>
+  op.tipo === 'gasto_importar' || op.tipo === 'gasto_desfazer';
 
-const TIPOS = Object.keys(MODELOS) as TipoObra[];
 const copiaModelos = (): Record<TipoObra, ModeloObra> => JSON.parse(JSON.stringify(MODELOS));
-
-function ler<T>(chave: string): T | null {
-  try {
-    const bruto = window.localStorage.getItem(chave);
-    return bruto ? (JSON.parse(bruto) as T) : null;
-  } catch {
-    return null;
-  }
-}
-function gravar(chave: string, valor: unknown) {
-  try {
-    window.localStorage.setItem(chave, JSON.stringify(valor));
-  } catch {
-    /* cota cheia ou storage bloqueado: segue só em memória */
-  }
-}
-
-function estadoInicial(): EstadoSalvo {
-  const s = ler<EstadoSalvo>(CHAVE_OBRAS);
-  const valido =
-    s && s.versao === VERSAO && Array.isArray(s.obras) && typeof s.hoje === 'string' &&
-    s.obras.every((o) => o && typeof o.id === 'string' && Array.isArray(o.etapas) && Array.isArray(o.baselines) && Array.isArray(o.apontamentos));
-  if (valido) return s;
-  return { versao: VERSAO, obras: criarSeed(HOJE_SEED), usuarioAtualId: USUARIOS[0].id, hoje: HOJE_SEED };
-}
-
-function modelosIniciais(): Record<TipoObra, ModeloObra> {
-  const s = ler<ModelosSalvos>(CHAVE_MODELOS);
-  if (s && s.versao === VERSAO_MODELOS && s.modelos && TIPOS.every((t) => s.modelos[t] && Array.isArray(s.modelos[t].atividades))) {
-    return s.modelos;
-  }
-  return copiaModelos();
-}
-
-let contadorId = 0;
-const novoId = (prefixo: string) => `${prefixo}-${Date.now().toString(36)}${(contadorId++).toString(36)}`;
+const novoId = (prefixo: string) => `${prefixo}-${crypto.randomUUID()}`;
 
 // ---------------------------------------------------------------------------
-// Provider
+// Provider: sessão
 // ---------------------------------------------------------------------------
 export function ObrasProvider({ children }: { children: ReactNode }) {
-  const [estado, setEstado] = useState<EstadoSalvo>(estadoInicial);
-  const [modelos, setModelos] = useState<Record<TipoObra, ModeloObra>>(modelosIniciais);
-  // Ref com o estado mais recente, para os métodos lerem usuário/hoje sem recriar callbacks.
-  const ref = useRef(estado);
-  ref.current = estado;
+  const [usuario, setUsuario] = useState<Usuario | null | undefined>(undefined); // undefined = verificando
 
-  useEffect(() => { gravar(CHAVE_OBRAS, estado); }, [estado]);
-  useEffect(() => { gravar(CHAVE_MODELOS, { versao: VERSAO_MODELOS, modelos } satisfies ModelosSalvos); }, [modelos]);
-
-  const usuarioAtual = USUARIOS.find((u) => u.id === estado.usuarioAtualId) ?? USUARIOS[0];
-
-  const mudarObra = useCallback((obraId: string, fn: (o: Obra) => Obra) => {
-    setEstado((s) => ({ ...s, obras: s.obras.map((o) => (o.id === obraId ? fn(o) : o)) }));
+  useEffect(() => {
+    api<{ usuario: Usuario }>('GET', '/auth/me')
+      .then((r) => setUsuario(r.usuario))
+      .catch((e) => {
+        if (!(e instanceof ErroApi && e.status === 401)) toast.error(mensagemErro(e));
+        setUsuario(null);
+      });
   }, []);
 
-  const setUsuarioAtual = useCallback((id: string) => {
-    if (USUARIOS.some((u) => u.id === id)) setEstado((s) => ({ ...s, usuarioAtualId: id }));
+  if (usuario === undefined) return <TelaCarregando texto="Verificando acesso..." />;
+  if (usuario === null) return <LoginPage aoEntrar={setUsuario} />;
+  return <ProviderLogado key={usuario.id} usuario={usuario} aoSair={() => setUsuario(null)}>{children}</ProviderLogado>;
+}
+
+function TelaCarregando({ texto }: { texto: string }) {
+  return <div className="flex min-h-screen items-center justify-center bg-gray-50 text-sm text-muted">{texto}</div>;
+}
+
+// ---------------------------------------------------------------------------
+// Provider: dados do usuário logado
+// ---------------------------------------------------------------------------
+function ProviderLogado({ usuario, aoSair, children }: { usuario: Usuario; aoSair: () => void; children: ReactNode }) {
+  const [obras, setObras] = useState<Obra[] | null>(null);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([usuario]);
+  const [modelos, setModelos] = useState<Record<TipoObra, ModeloObra>>(copiaModelos);
+  const [hoje, setHojeEstado] = useState<ISODate>(hojeLocal);
+  const [pendentes, setPendentes] = useState(0);
+  const [erroCarga, setErroCarga] = useState<string | null>(null);
+
+  // Cópia síncrona das obras: as mutações do mesmo clique (ex.: criar + atualizar no wizard) leem a versão mais nova.
+  const obrasRef = useRef<Obra[]>([]);
+  const filas = useRef(new Map<string, Operacao[]>());
+  const rodando = useRef(new Set<string>());
+
+  const publicar = useCallback((lista: Obra[]) => { obrasRef.current = lista; setObras(lista); }, []);
+  const trocarObra = useCallback((obra: Obra) => {
+    const lista = obrasRef.current.some((o) => o.id === obra.id)
+      ? obrasRef.current.map((o) => (o.id === obra.id ? obra : o))
+      : [...obrasRef.current, obra];
+    publicar(lista);
+  }, [publicar]);
+
+  const recarregarUsuarios = useCallback(async () => {
+    setUsuarios(await api<Usuario[]>('GET', '/usuarios'));
   }, []);
-  const setHoje = useCallback((d: ISODate) => {
-    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) setEstado((s) => ({ ...s, hoje: d }));
-  }, []);
+
+  const recarregar = useCallback(async () => {
+    const [os, us, ms] = await Promise.all([
+      api<Obra[]>('GET', '/obras'),
+      api<Usuario[]>('GET', '/usuarios'),
+      api<Record<TipoObra, ModeloObra>>('GET', '/modelos'),
+    ]);
+    publicar(os);
+    setUsuarios(us);
+    setModelos(ms);
+  }, [publicar]);
+
+  useEffect(() => {
+    recarregar().catch((e) => setErroCarga(mensagemErro(e)));
+  }, [recarregar]);
+
+  // Avisa antes de fechar a aba com alteração ainda não enviada.
+  useEffect(() => {
+    if (!pendentes) return;
+    const h = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener('beforeunload', h);
+    return () => window.removeEventListener('beforeunload', h);
+  }, [pendentes]);
+
+  /** Troca um gasto da obra pela versão do servidor (id igual). */
+  const trocarGasto = useCallback((obraId: string, id: string, g: Gasto) => {
+    const obra = obrasRef.current.find((o) => o.id === obraId);
+    if (obra) trocarObra({ ...obra, gastos: (obra.gastos ?? []).map((x) => (x.id === id ? g : x)) });
+  }, [trocarObra]);
+
+  /** Recarrega só os gastos da obra (depois de importar ou desfazer um lote). */
+  const recarregarGastos = useCallback(async (obraId: string) => {
+    const gastos = await api<Gasto[]>('GET', `/obras/${obraId}/gastos`);
+    const obra = obrasRef.current.find((o) => o.id === obraId);
+    if (obra) trocarObra({ ...obra, gastos });
+  }, [trocarObra]);
+
+  // -------------------------------------------------------------------------
+  // Fila por obra
+  // -------------------------------------------------------------------------
+  const processar = useCallback(async (obraId: string) => {
+    if (rodando.current.has(obraId)) return;
+    rodando.current.add(obraId);
+    try {
+      // Deixa terminar o clique atual (ex.: criarObra + atualizarObra no mesmo handler) antes de enviar.
+      await new Promise((r) => setTimeout(r, 0));
+      const fila = filas.current.get(obraId) ?? [];
+      while (fila.length) {
+        const op = fila.shift()!;
+        // Junta "gravar" seguidos (e "gravar" logo depois de "criar"): o envio leva a versão mais recente.
+        // Justificativas de gravações juntadas não se perdem: vão juntas no envio.
+        let justificativas: string[] = op.tipo === 'gravar' && op.justificativa ? [op.justificativa] : [];
+        if (op.tipo === 'criar' || op.tipo === 'gravar') {
+          let juntadas = 0;
+          while (fila[0]?.tipo === 'gravar') {
+            const j = (fila.shift() as { justificativa?: string }).justificativa;
+            if (j) justificativas = [...justificativas, j];
+            juntadas++;
+          }
+          if (juntadas) setPendentes((n) => Math.max(0, n - juntadas));
+        }
+        const local = obrasRef.current.find((o) => o.id === obraId);
+        try {
+          let resposta: Obra | null = null;
+          if (op.tipo === 'criar') {
+            if (!local) continue;
+            resposta = await api<Obra>('POST', '/obras', local);
+          } else if (op.tipo === 'gravar') {
+            if (!local) continue;
+            const { alteracoes: _alts, ...corpo } = local;
+            resposta = await api<Obra>('PUT', `/obras/${obraId}`, justificativas.length ? { ...corpo, justificativaAlteracao: justificativas.join(' | ') } : corpo);
+          } else if (op.tipo === 'baseline') {
+            resposta = await api<Obra>('POST', `/obras/${obraId}/baselines`, { justificativa: op.justificativa });
+          } else if (op.tipo === 'apontamento') {
+            const { tipo: _t, ...corpo } = op;
+            resposta = await api<Obra>('POST', `/obras/${obraId}/apontamentos`, corpo);
+          } else if (op.tipo === 'gasto_novo') {
+            const { autorId: _a, criadoEm: _c, ...corpo } = op.gasto;
+            trocarGasto(obraId, op.gasto.id, await api<Gasto>('POST', `/obras/${obraId}/gastos`, corpo));
+          } else if (op.tipo === 'gasto_editar') {
+            trocarGasto(obraId, op.id, await api<Gasto>('PATCH', `/gastos/${op.id}`, op.parcial));
+          } else if (op.tipo === 'gasto_excluir') {
+            await api('DELETE', `/gastos/${op.id}`);
+          } else if (op.tipo === 'gasto_importar') {
+            const r = await api<ResultadoImportacao>('POST', `/obras/${obraId}/gastos/importar`, { linhas: op.linhas });
+            await recarregarGastos(obraId);
+            op.ok(r);
+          } else {
+            await api('DELETE', `/importacoes/${op.importacaoId}`);
+            await recarregarGastos(obraId);
+            op.ok();
+          }
+          // Sem mais nada na fila: a versão do servidor vira a verdade. Com fila: só atualiza a revisão.
+          const atual = obrasRef.current.find((o) => o.id === obraId);
+          if (resposta) trocarObra(fila.length || !atual ? { ...(atual ?? resposta), revisao: resposta.revisao } : resposta);
+        } catch (e) {
+          const descartadas = fila.length;
+          // Quem esperava promessa (importar/desfazer) recebe o erro; o resto da fila é descartado.
+          for (const d of fila) if (comRetorno(d)) d.falha(new Error('Cancelado: uma alteração anterior desta obra não foi salva.'));
+          fila.length = 0;
+          if (descartadas) setPendentes((n) => Math.max(0, n - descartadas));
+          if (comRetorno(op)) op.falha(e);
+          else toast.error('Alteração não salva no servidor.', { description: mensagemErro(e) });
+          try {
+            const doServidor = await api<Obra>('GET', `/obras/${obraId}`);
+            trocarObra(doServidor);
+          } catch (e2) {
+            if (e2 instanceof ErroApi && e2.status === 404) publicar(obrasRef.current.filter((o) => o.id !== obraId));
+          }
+        } finally {
+          setPendentes((n) => Math.max(0, n - 1));
+        }
+      }
+    } finally {
+      rodando.current.delete(obraId);
+      if ((filas.current.get(obraId) ?? []).length) void processar(obraId);
+    }
+  }, [publicar, trocarObra, trocarGasto, recarregarGastos]);
+
+  const enfileirar = useCallback((obraId: string, op: Operacao) => {
+    const fila = filas.current.get(obraId) ?? [];
+    fila.push(op);
+    filas.current.set(obraId, fila);
+    setPendentes((n) => n + 1);
+    void processar(obraId);
+  }, [processar]);
+
+  // -------------------------------------------------------------------------
+  // Métodos do contrato
+  // -------------------------------------------------------------------------
+  const setHoje = useCallback((d: ISODate) => { if (/^\d{4}-\d{2}-\d{2}$/.test(d)) setHojeEstado(d); }, []);
 
   const criarObra = useCallback((p: ParametrosNovaObra): Obra => {
     const obra = gerarObra(p, novoId('obra'), modelos[p.tipo] ?? MODELOS[p.tipo]);
-    setEstado((s) => ({ ...s, obras: [...s.obras, obra] }));
+    trocarObra(obra);
+    enfileirar(obra.id, { tipo: 'criar' });
     return obra;
-  }, [modelos]);
+  }, [modelos, trocarObra, enfileirar]);
 
-  const atualizarObra = useCallback((obra: Obra) => mudarObra(obra.id, () => obra), [mudarObra]);
+  const atualizarObra = useCallback((obra: Obra, opcoes?: { justificativa?: string }) => {
+    const atual = obrasRef.current.find((o) => o.id === obra.id);
+    trocarObra({ ...obra, revisao: atual?.revisao ?? obra.revisao });
+    enfileirar(obra.id, { tipo: 'gravar', justificativa: opcoes?.justificativa?.trim() || undefined });
+  }, [trocarObra, enfileirar]);
 
-  /**
-   * Lê a obra pelo setState funcional (pega um atualizarObra feito no mesmo handler).
-   * Lança erro na hora, sem alterar nada, se a obra já tem baseline e a justificativa veio vazia.
-   */
   const congelarBaseline = useCallback((obraId: string, justificativa?: string) => {
-    const { obras, usuarioAtualId, hoje } = ref.current;
-    const obra = obras.find((o) => o.id === obraId);
-    if (obra && obra.baselines.length >= 1 && !justificativa?.trim()) {
+    const obra = obrasRef.current.find((o) => o.id === obraId);
+    if (!obra) return;
+    if (obra.baselines.length >= 1 && !justificativa?.trim()) {
       throw new Error('Justificativa obrigatória para replanejar (baseline v2 ou posterior).');
     }
-    mudarObra(obraId, (o) => {
-      try {
-        return congelarBaselineObra(o, usuarioAtualId, hoje, justificativa);
-      } catch {
-        return o;
-      }
-    });
-  }, [mudarObra]);
+    trocarObra(congelarBaselineObra(obra, usuario.id, hojeLocal(), justificativa?.trim() || undefined));
+    enfileirar(obraId, { tipo: 'baseline', justificativa: justificativa?.trim() || undefined });
+  }, [usuario.id, trocarObra, enfileirar]);
 
-  /** Lê a obra pelo setState funcional; obra ou item inexistente = nada acontece. */
   const lancarApontamento = useCallback<ObrasStore['lancarApontamento']>((a) => {
-    const { usuarioAtualId, hoje } = ref.current;
-    const novo = Math.max(0, Math.min(100, Math.round(a.percentualNovo)));
-    mudarObra(a.obraId, (o) => {
-      const existe = o.etapas.some((e) => e.atividades.some((at) => at.itens.some((i) => i.id === a.itemId)));
-      if (!existe) return o;
-      let anterior = 0;
-      const etapas = o.etapas.map((e) => ({
-        ...e,
-        atividades: e.atividades.map((at) => ({
-          ...at,
-          itens: at.itens.map((i) => {
-            if (i.id !== a.itemId) return i;
-            anterior = i.percentual;
-            const item = { ...i, percentual: novo };
-            if (novo > 0 && !item.inicioReal) item.inicioReal = hoje;
-            if (novo === 0) delete item.inicioReal;
-            if (novo >= 100) item.fimReal = item.fimReal && i.percentual >= 100 ? item.fimReal : hoje;
-            else delete item.fimReal;
-            return item;
-          }),
-        })),
-      }));
-      const apontamento: Apontamento = {
-        id: novoId('ap'),
-        itemId: a.itemId,
-        data: hoje,
-        percentualAnterior: anterior,
-        percentualNovo: novo,
-        ...(a.observacao?.trim() ? { observacao: a.observacao.trim() } : {}),
-        fotos: a.fotos ?? [],
-        autorId: usuarioAtualId,
-      };
-      const todos = etapas.flatMap((e) => e.atividades.flatMap((at) => at.itens));
-      const tudoPronto = todos.length > 0 && todos.every((i) => i.percentual >= 100);
-      let status = o.status;
-      if (tudoPronto) status = 'concluida';
-      else if (o.status === 'concluida' || (o.status === 'planejamento' && novo > 0)) status = 'em_andamento';
-      return { ...o, etapas, status, apontamentos: [...o.apontamentos, apontamento] };
-    });
-  }, [mudarObra]);
+    const obra = obrasRef.current.find((o) => o.id === a.obraId);
+    if (!obra) return;
+    const r = aplicarApontamento(obra, a, usuario.id, hojeLocal(), novoId('ap-local'));
+    if (!r) return;
+    trocarObra(r.obra);
+    enfileirar(a.obraId, { tipo: 'apontamento', itemId: a.itemId, percentualNovo: a.percentualNovo, observacao: a.observacao, fotos: a.fotos });
+  }, [usuario.id, trocarObra, enfileirar]);
 
   const restaurarExemplos = useCallback(() => {
-    setEstado((s) => ({ versao: VERSAO, obras: criarSeed(HOJE_SEED), usuarioAtualId: s.usuarioAtualId, hoje: HOJE_SEED }));
+    const t = toast.loading('Recriando obras de exemplo...');
+    api('POST', '/exemplos')
+      .then(() => recarregar())
+      .then(() => toast.success('Obras de exemplo recriadas.', { id: t }))
+      .catch((e) => toast.error('Não foi possível recriar os exemplos.', { id: t, description: mensagemErro(e) }));
+  }, [recarregar]);
+
+  const excluirObra = useCallback(async (obraId: string) => {
+    await api('DELETE', `/obras/${obraId}`);
+    publicar(obrasRef.current.filter((o) => o.id !== obraId));
+  }, [publicar]);
+
+  // Gastos: otimistas na tela + fila por obra (mesma ordem dos outros envios da obra).
+  const lancarGasto = useCallback((g: NovoGasto): Gasto => {
+    const novo: Gasto = { ...g, valor: Math.round(g.valor * 100) / 100, id: novoId('gasto'), autorId: usuario.id, criadoEm: new Date().toISOString() };
+    const obra = obrasRef.current.find((o) => o.id === g.obraId);
+    if (!obra) return novo;
+    trocarObra({ ...obra, gastos: [...(obra.gastos ?? []), novo] });
+    enfileirar(obra.id, { tipo: 'gasto_novo', gasto: novo });
+    return novo;
+  }, [usuario.id, trocarObra, enfileirar]);
+
+  const editarGasto = useCallback((id: string, parcial: EdicaoGasto) => {
+    const obra = obrasRef.current.find((o) => (o.gastos ?? []).some((x) => x.id === id));
+    if (!obra) return;
+    const atual = obra.gastos.find((x) => x.id === id)!;
+    const novo = { ...atual, ...parcial } as Gasto;
+    // Campo opcional que veio vazio/undefined de propósito = apagar (no servidor vai como null).
+    const corpo: Record<string, unknown> = { ...parcial };
+    for (const k of ['atividadeId', 'fornecedor', 'documento'] as const) {
+      if (k in parcial && !parcial[k]) { delete novo[k]; corpo[k] = null; }
+    }
+    // Trocou de etapa sem dizer a atividade: a atividade antiga é descartada (igual ao servidor).
+    if (parcial.etapaCodigo !== undefined && parcial.etapaCodigo !== atual.etapaCodigo && !('atividadeId' in parcial)) delete novo.atividadeId;
+    trocarObra({ ...obra, gastos: obra.gastos.map((x) => (x.id === id ? novo : x)) });
+    enfileirar(obra.id, { tipo: 'gasto_editar', id, parcial: corpo });
+  }, [trocarObra, enfileirar]);
+
+  const excluirGasto = useCallback((id: string) => {
+    const obra = obrasRef.current.find((o) => (o.gastos ?? []).some((x) => x.id === id));
+    if (!obra) return;
+    trocarObra({ ...obra, gastos: obra.gastos.filter((x) => x.id !== id) });
+    enfileirar(obra.id, { tipo: 'gasto_excluir', id });
+  }, [trocarObra, enfileirar]);
+
+  const importarGastos = useCallback((obraId: string, linhas: Record<string, string>[]) =>
+    new Promise<ResultadoImportacao>((ok, falha) => enfileirar(obraId, { tipo: 'gasto_importar', linhas, ok, falha })), [enfileirar]);
+
+  const desfazerImportacao = useCallback((obraId: string, importacaoId: string) =>
+    new Promise<void>((ok, falha) => enfileirar(obraId, { tipo: 'gasto_desfazer', importacaoId, ok, falha })), [enfileirar]);
+
+  const atualizarModelo = useCallback((m: ModeloObra) => {
+    setModelos((ms) => ({ ...ms, [m.tipo]: m }));
+    api<ModeloObra>('PUT', `/modelos/${m.tipo}`, m)
+      .then((salvo) => setModelos((ms) => ({ ...ms, [salvo.tipo]: salvo })))
+      .catch((e) => {
+        toast.error('Modelo não salvo no servidor.', { description: mensagemErro(e) });
+        api<Record<TipoObra, ModeloObra>>('GET', '/modelos').then(setModelos).catch(() => {});
+      });
   }, []);
 
-  const atualizarModelo = useCallback((m: ModeloObra) => setModelos((ms) => ({ ...ms, [m.tipo]: m })), []);
-  const restaurarModelos = useCallback(() => setModelos(copiaModelos()), []);
+  const restaurarModelos = useCallback(() => {
+    setModelos(copiaModelos());
+    api<Record<TipoObra, ModeloObra>>('DELETE', '/modelos')
+      .then(setModelos)
+      .catch((e) => toast.error('Não foi possível restaurar os modelos.', { description: mensagemErro(e) }));
+  }, []);
+
+  const restaurarModelo = useCallback((tipo: TipoObra) => {
+    setModelos((ms) => ({ ...ms, [tipo]: copiaModelos()[tipo] }));
+    api<ModeloObra>('DELETE', `/modelos/${tipo}`)
+      .then((padrao) => setModelos((ms) => ({ ...ms, [tipo]: padrao })))
+      .catch((e) => {
+        toast.error('Não foi possível restaurar o modelo.', { description: mensagemErro(e) });
+        api<Record<TipoObra, ModeloObra>>('GET', '/modelos').then(setModelos).catch(() => {});
+      });
+  }, []);
+
+  const sair = useCallback(async () => {
+    if (pendentes && !window.navigator.onLine) toast.warning('Há alterações não enviadas.');
+    try { await api('POST', '/auth/logout'); } catch { /* sessão já pode ter expirado */ }
+    aoSair();
+  }, [aoSair, pendentes]);
 
   const value = useMemo<ObrasStore>(() => ({
-    obras: estado.obras,
-    usuarios: USUARIOS,
-    usuarioAtual,
-    setUsuarioAtual,
-    hoje: estado.hoje,
+    obras: obras ?? [],
+    usuarios,
+    usuarioAtual: usuario,
+    setUsuarioAtual: () => {},
+    hoje,
     setHoje,
     criarObra,
     atualizarObra,
@@ -201,9 +396,30 @@ export function ObrasProvider({ children }: { children: ReactNode }) {
     modelos,
     atualizarModelo,
     restaurarModelos,
-  }), [estado.obras, estado.hoje, usuarioAtual, setUsuarioAtual, setHoje, criarObra, atualizarObra, congelarBaseline,
-    lancarApontamento, restaurarExemplos, modelos, atualizarModelo, restaurarModelos]);
+    restaurarModelo,
+    sincronizando: pendentes > 0,
+    sair,
+    recarregar,
+    recarregarUsuarios,
+    excluirObra,
+    lancarGasto,
+    editarGasto,
+    excluirGasto,
+    importarGastos,
+    desfazerImportacao,
+  }), [lancarGasto, editarGasto, excluirGasto, importarGastos, desfazerImportacao, obras, usuarios, usuario, hoje, setHoje, criarObra, atualizarObra, congelarBaseline, lancarApontamento,
+    restaurarExemplos, modelos, atualizarModelo, restaurarModelos, restaurarModelo, pendentes, sair, recarregar, recarregarUsuarios, excluirObra]);
 
+  if (erroCarga) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-gray-50 p-6 text-center">
+        <p className="text-sm text-gray-900">Não foi possível carregar os dados.</p>
+        <p className="text-xs text-muted">{erroCarga}</p>
+        <button className="min-h-11 rounded-md border border-border bg-white px-4 text-sm" onClick={() => window.location.reload()}>Tentar de novo</button>
+      </div>
+    );
+  }
+  if (obras === null) return <TelaCarregando texto="Carregando obras..." />;
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
@@ -217,7 +433,7 @@ export function useObra(id: string | undefined): Obra | undefined {
   return useObras().obras.find((o) => o.id === id);
 }
 
-/** Obras visíveis ao usuário atual: diretor vê todas; engenheiro/encarregado só as suas. */
+/** Obras visíveis ao usuário atual. A API já filtra; o filtro aqui só protege a tela. */
 export function useObrasVisiveis(): Obra[] {
   const { obras, usuarioAtual } = useObras();
   if (usuarioAtual.perfil === 'diretor') return obras;
@@ -225,6 +441,7 @@ export function useObrasVisiveis(): Obra[] {
   return obras.filter((o) => o[campo] === usuarioAtual.id);
 }
 
+/** Quem vê R$. Regra do encarregado DESLIGADA (OCULTAR_VALORES_ENCARREGADO = false, decisão do Otavio 10/11). */
 export function podeVerValores(perfil: Perfil): boolean {
-  return perfil !== 'encarregado';
+  return !OCULTAR_VALORES_ENCARREGADO || perfil !== 'encarregado';
 }

@@ -23,7 +23,7 @@ function CabecalhoTabela({ children, className }: { children: React.ReactNode; c
 }
 
 export default function ModeloDetalhe({ tipo }: { tipo: TipoObra }) {
-  const { modelos, usuarioAtual, atualizarModelo } = useObras();
+  const { modelos, usuarioAtual, atualizarModelo, restaurarModelo } = useObras();
   const podeEditar = usuarioAtual.perfil === 'diretor' || usuarioAtual.perfil === 'engenheiro';
   const salvo = modelos[tipo] as ModeloObra | undefined;
   const padrao = MODELOS[tipo] as ModeloObra | undefined;
@@ -65,7 +65,7 @@ export default function ModeloDetalhe({ tipo }: { tipo: TipoObra }) {
   const restaurar = () => {
     if (!padrao) return;
     try {
-      atualizarModelo(padrao);
+      restaurarModelo(padrao.tipo);
       setRascunho(null);
       toast.success('Modelo padrão restaurado.');
     } catch (e) {

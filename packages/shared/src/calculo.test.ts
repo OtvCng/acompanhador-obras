@@ -87,6 +87,7 @@ function obraTeste(): Obra {
       },
     }],
     apontamentos: [],
+    gastos: [],
   };
 }
 

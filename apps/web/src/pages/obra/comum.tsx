@@ -120,7 +120,10 @@ export function SemObras({ mensagem }: { mensagem?: string }) {
       </div>
       <div className="text-sm font-semibold text-gray-900">Nenhuma obra por aqui</div>
       <p className="max-w-md text-sm text-muted">
-        {mensagem ?? 'Ainda não há obras visíveis para o seu perfil. Use "Restaurar dados de exemplo" no topo para carregar as 6 obras fictícias.'}
+        {mensagem ??
+          (usuarioAtual.perfil === 'diretor'
+            ? 'Ainda não há obras. Cadastre uma nova obra ou use "Obras de exemplo" no topo para recriar as 6 obras fictícias.'
+            : 'Você ainda não é responsável por nenhuma obra. Peça ao diretor para incluir você numa obra.')}
       </p>
       {usuarioAtual.perfil !== 'encarregado' && (
         <Button asChild variant="outline" size="sm">

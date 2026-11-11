@@ -78,5 +78,7 @@ export function ocultarValores(obra: Obra): Obra {
       ...b,
       itens: Object.fromEntries(Object.entries(b.itens).map(([k, v]) => [k, { ...v, valor: r(v.valor) }])),
     })),
+    // Gastos na mesma escala: CPI e desvio % continuam certos, sem sair R$.
+    gastos: (obra.gastos ?? []).map((g) => ({ ...g, valor: r(g.valor) })),
   };
 }

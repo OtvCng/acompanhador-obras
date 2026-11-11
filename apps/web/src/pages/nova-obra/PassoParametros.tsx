@@ -41,8 +41,15 @@ export default function PassoParametros({
   erros: ErrosParametros;
   mostrarErros: boolean;
 }) {
-  const engenheiros = usuarios.filter((u) => u.perfil === 'engenheiro' || u.perfil === 'diretor');
-  const encarregados = usuarios.filter((u) => u.perfil === 'encarregado');
+  // Usuários ativos; os fictícios das obras de exemplo (que também servem de login de teste) vão num grupo à parte.
+  const ativos = usuarios.filter((u) => u.ativo !== false);
+  const ehEng = (u: Usuario) => u.perfil === 'engenheiro' || u.perfil === 'diretor';
+  const engenheiros = ativos.filter((u) => ehEng(u) && !u.exemplo);
+  const engenheirosExemplo = ativos.filter((u) => ehEng(u) && u.exemplo);
+  const soEncarregados = ativos.filter((u) => u.perfil === 'encarregado' && !u.exemplo);
+  // Sem encarregado real cadastrado ainda: deixa escolher qualquer usuário real (ex.: o próprio engenheiro toca a obra).
+  const encarregados = soEncarregados.length ? soEncarregados : ativos.filter((u) => !u.exemplo);
+  const encarregadosExemplo = ativos.filter((u) => u.perfil === 'encarregado' && u.exemplo);
   const aviso = useMemo(() => avisoData(form.dataInicio), [form.dataInicio]);
   const err = (k: keyof FormNovaObra) => (mostrarErros ? erros[k] : undefined);
   const orc = lerNumero(form.orcamento);
@@ -80,7 +87,7 @@ export default function PassoParametros({
             </Aviso>
           )}
         </div>
-        <Campo rotulo="Engenheiro responsável" erro={err('engenheiroId')} ajuda={engenheiros.length === 0 ? 'Nenhum usuário com perfil de engenheiro cadastrado ainda.' : undefined}>
+        <Campo rotulo="Engenheiro responsável" erro={err('engenheiroId')} ajuda={engenheiros.length + engenheirosExemplo.length === 0 ? 'Nenhum usuário com perfil de engenheiro cadastrado ainda.' : undefined}>
           <Selecao value={form.engenheiroId} onChange={(e) => set({ engenheiroId: e.target.value })} invalido={!!err('engenheiroId')}>
             <option value="">Selecione</option>
             {engenheiros.map((u) => (
@@ -89,9 +96,19 @@ export default function PassoParametros({
                 {u.perfil === 'diretor' ? ' (diretor)' : ''}
               </option>
             ))}
+            {engenheirosExemplo.length > 0 && (
+              <optgroup label="Usuários de exemplo">
+                {engenheirosExemplo.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nome}
+                    {u.perfil === 'diretor' ? ' (diretor)' : ''}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </Selecao>
         </Campo>
-        <Campo rotulo="Encarregado" erro={err('encarregadoId')} ajuda={encarregados.length === 0 ? 'Nenhum usuário com perfil de encarregado cadastrado ainda.' : undefined}>
+        <Campo rotulo="Encarregado" erro={err('encarregadoId')} ajuda={encarregados.length + encarregadosExemplo.length === 0 ? 'Nenhum usuário com perfil de encarregado cadastrado ainda.' : undefined}>
           <Selecao value={form.encarregadoId} onChange={(e) => set({ encarregadoId: e.target.value })} invalido={!!err('encarregadoId')}>
             <option value="">Selecione</option>
             {encarregados.map((u) => (
@@ -99,6 +116,15 @@ export default function PassoParametros({
                 {u.nome}
               </option>
             ))}
+            {encarregadosExemplo.length > 0 && (
+              <optgroup label="Usuários de exemplo">
+                {encarregadosExemplo.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nome}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </Selecao>
         </Campo>
       </div>
