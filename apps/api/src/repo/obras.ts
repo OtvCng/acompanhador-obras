@@ -180,6 +180,16 @@ export async function inserirBaseline(tx: Tx, obraId: string, b: Baseline) {
     (v) => tx.insert(s.baselineItens).values(v));
 }
 
+/**
+ * (Levas 2/3) Regrava as entradas de uma versão da baseline (apaga as da versão e insere as novas).
+ * Chamar dentro da transação do PUT. A linha da baseline (data, autor, justificativa) não muda.
+ */
+export async function regravarItensBaseline(tx: Tx, obraId: string, versao: number, itens: Baseline['itens']) {
+  await tx.delete(s.baselineItens).where(and(eq(s.baselineItens.obraId, obraId), eq(s.baselineItens.versao, versao)));
+  await emLotes(Object.entries(itens).map(([itemId, v]) => ({ obraId, versao, itemId, inicio: v.inicio, fim: v.fim, valor: v.valor })),
+    (v) => tx.insert(s.baselineItens).values(v));
+}
+
 export async function inserirAlteracao(tx: Tx, obraId: string, a: AlteracaoCronograma) {
   await tx.insert(s.alteracoesCronograma).values({ id: a.id, obraId, data: a.data, autorId: a.autorId, justificativa: a.justificativa, itens: a.itens });
 }

@@ -5,3 +5,4 @@ export * from './apontamento';
 export * from './custo';
 export * from './predecessoras';
 export * from './justificativa';
+export * from './estrutura';

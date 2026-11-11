@@ -10,6 +10,7 @@ import { faixaPorSpi, planejadoItem, type FaixaSaude, type ISODate, type ItemAti
 import { ORDEM_FAIXAS, SAUDE, SaudePonto } from '@/components/ui';
 import { formatData, formatPct, formatPctFracao, formatSPI } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { AcaoEstruturaAtividade } from './AcaoEstruturaAtividade';
 
 /** "#rrggbb" + alfa → rgba(). */
 function rgba(hex: string, a: number): string {
@@ -26,6 +27,8 @@ export function GradePorAndar({
   mudarPct,
   definirPct,
   datasDe,
+  podeEditar = false,
+  temMudanca = false,
 }: {
   obra: Obra;
   hoje: ISODate;
@@ -34,15 +37,19 @@ export function GradePorAndar({
   /** Define o mesmo % em vários itens (atalho "etapa concluída neste andar"). */
   definirPct: (itens: ItemAtividade[], valor: number) => void;
   datasDe: (it: ItemAtividade) => { inicio: ISODate; fim: ISODate };
+  /** Diretor/engenheiro: mostra "Dividir por andar" / "Juntar em obra toda" em cada atividade (Leva 2). */
+  podeEditar?: boolean;
+  /** Há alteração não salva no Cronograma: as ações de estrutura ficam bloqueadas. */
+  temMudanca?: boolean;
 }) {
   const [fechadas, setFechadas] = useState<Set<number>>(new Set());
 
-  /** Colunas: locais com itens, na ordem da obra; "Obra toda" por último, se houver item nela. */
+  /** Colunas: todos os andares da obra (mesmo sem item, para poder dividir), na ordem; "Obra toda" por último, se houver item nela. */
   const colunas = useMemo(() => {
     const usados = new Set(obra.etapas.flatMap((e) => e.atividades.flatMap((a) => a.itens.map((i) => i.localId))));
     const tipoObra = new Set(obra.locais.filter((l) => l.tipo === 'obra').map((l) => l.id));
     const pav: { id: string; nome: string; local?: Local }[] = obra.locais
-      .filter((l) => l.tipo !== 'obra' && usados.has(l.id))
+      .filter((l) => l.tipo !== 'obra')
       .sort((a, b) => a.ordem - b.ordem)
       .map((l) => ({ id: l.id, nome: l.nome, local: l }));
     const temObraToda = [...usados].some((id) => tipoObra.has(id));
@@ -207,9 +214,12 @@ export function GradePorAndar({
                       const rotulo = `${a.codigo} ${a.nome}`;
                       return (
                         <tr key={a.id}>
-                          <td className="sticky left-0 z-10 max-w-72 bg-surface py-0.5 pl-8 pr-2">
-                            <div className="truncate text-gray-900" title={rotulo}>
-                              <span className="text-muted">{a.codigo}</span> {a.nome}
+                          <td className="group/ativ sticky left-0 z-10 max-w-72 bg-surface py-0.5 pl-8 pr-2">
+                            <div className="flex items-center gap-1">
+                              <div className="min-w-0 flex-1 truncate text-gray-900" title={rotulo}>
+                                <span className="text-muted">{a.codigo}</span> {a.nome}
+                              </div>
+                              {podeEditar && <AcaoEstruturaAtividade obra={obra} atividade={a} temMudanca={temMudanca} />}
                             </div>
                           </td>
                           {colunas.lista.map((c) => (

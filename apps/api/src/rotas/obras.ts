@@ -2,11 +2,11 @@
 import type { FastifyInstance } from 'fastify';
 import { eq, inArray } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
-import { LIMITE_JUSTIFICATIVA_DU, OCULTAR_VALORES_ENCARREGADO, aplicarApontamento, congelarBaseline, desviosParaJustificar, ocultarValores, type Obra } from '@obras/shared';
+import { LIMITE_JUSTIFICATIVA_DU, OCULTAR_VALORES_ENCARREGADO, aplicarApontamento, congelarBaseline, desviosParaJustificar, ocultarValores, sincronizarAvancoEstrutura, sincronizarBaselineEstrutura, type Obra } from '@obras/shared';
 import { db, schema as s } from '../db';
 import { hojeServidor } from '../env';
 import { ErroHttp, exigirPerfil, exigirUsuario, type UsuarioSessao } from '../auth/sessao';
-import { carregarObra, carregarObras, gravarApontamento, gravarObra, inserirAlteracao, inserirBaseline, travarObra } from '../repo/obras';
+import { carregarObra, carregarObras, gravarApontamento, gravarObra, inserirAlteracao, inserirBaseline, regravarItensBaseline, travarObra } from '../repo/obras';
 import { recriarExemplos } from '../repo/exemplos';
 import * as v from '../validacao';
 
@@ -95,7 +95,7 @@ export async function rotasObras(app: FastifyInstance) {
     const u = exigirPerfil(req, 'diretor', 'engenheiro');
     const linha = await obraVisivel(u, req.params.id);
     if (!podeEditar(u, linha)) throw new ErroHttp(403, 'Só o engenheiro responsável ou o diretor editam esta obra.');
-    const corpo = v.obra.parse(req.body) as Obra;
+    let corpo = v.obra.parse(req.body) as Obra;
     const { justificativaAlteracao } = v.extraGravarObra.parse(req.body ?? {});
     if (corpo.id !== req.params.id) throw new ErroHttp(400, 'Identificador da obra não confere.');
     // Trocar o engenheiro responsável é decisão do diretor (engenheiro não "passa" a obra adiante pela API).
@@ -108,6 +108,13 @@ export async function rotasObras(app: FastifyInstance) {
         throw new ErroHttp(409, 'Outra pessoa salvou esta obra antes. Os dados foram recarregados; refaça a alteração.');
       }
       const atual = (await carregarObra(corpo.id, tx))!;
+      // Levas 2/3: local que sumiu do corpo não pode ter item com avanço.
+      const locaisCorpo = new Set(corpo.locais.map((l) => l.id));
+      for (const l of atual.locais) {
+        if (locaisCorpo.has(l.id)) continue;
+        const comAvanco = atual.etapas.flatMap((e) => e.atividades).find((a) => a.itens.some((i) => i.localId === l.id && i.percentual > 0));
+        if (comAvanco) throw new ErroHttp(400, `Não dá para remover "${l.nome}": a atividade ${comAvanco.codigo} ${comAvanco.nome} já tem avanço lançado nele.`);
+      }
       const avanco = new Map(atual.etapas.flatMap((e) => e.atividades.flatMap((a) => a.itens)).map((i) => [i.id, i]));
       for (const e of corpo.etapas) for (const a of e.atividades) for (const i of a.itens) {
         const r = avanco.get(i.id);
@@ -115,6 +122,8 @@ export async function rotasObras(app: FastifyInstance) {
         if (r?.inicioReal) i.inicioReal = r.inicioReal; else delete i.inicioReal;
         if (r?.fimReal) i.fimReal = r.fimReal; else delete i.fimReal;
       }
+      // Levas 2/3 ("Avanço no PUT"): atividades que mudaram de itens (dividir/juntar/andar) derivam o avanço do banco.
+      corpo = sincronizarAvancoEstrutura(atual, corpo);
       // Regra do cronograma (plano 2026-11-11-15-05): data de etapa/atividade que mudou e ficou a mais de
       // 5 d.u. da baseline inicial exige justificativa. Conferido aqui para não depender da tela.
       const desvios = desviosParaJustificar(atual, corpo);
@@ -124,6 +133,11 @@ export async function rotasObras(app: FastifyInstance) {
         }
       }
       await gravarObra(tx, { ...corpo, revisao: travada.revisao }, { nova: false });
+      // Levas 2/3: a baseline v1 acompanha a estrutura, calculada a partir do banco (não confia na do corpo).
+      const b1 = sincronizarBaselineEstrutura(atual, corpo);
+      if (b1 && JSON.stringify(b1.itens) !== JSON.stringify(atual.baselines[0].itens)) {
+        await regravarItensBaseline(tx, corpo.id, atual.baselines[0].versao, b1.itens);
+      }
       if (desvios.length) {
         await inserirAlteracao(tx, corpo.id, { id: `alt-${randomUUID()}`, data: hojeServidor(), autorId: u.id, justificativa: justificativaAlteracao!, itens: desvios });
       }

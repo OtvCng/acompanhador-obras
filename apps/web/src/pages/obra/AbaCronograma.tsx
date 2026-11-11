@@ -53,6 +53,7 @@ import {
 import { diasEntre, formatData, formatDiaMes, formatMesAno, formatPctFracao, formatSPI } from '@/lib/format';
 import { useNomeUsuario } from './comum';
 import { GradePorAndar } from './GradePorAndar';
+import { EditorAndaresObra } from './EditorAndaresObra';
 import { cn } from '@/lib/utils';
 
 type Datas = { inicio: ISODate; fim: ISODate };
@@ -101,8 +102,27 @@ export function AbaCronograma({ obra }: { obra: Obra }) {
   // Atividades com vários locais: guarda as FECHADAS (padrão = abertas, para os campos de cada local ficarem à vista).
   const [locaisFechados, setLocaisFechados] = useState<Set<string>>(new Set());
   // Visões (plano 2026-11-11-16-20): "andar" = grade de lançamento; "etapa" = Gantt de prazos (com filtro de andar).
-  const temAndares = obra.locais.some((l) => l.tipo !== 'obra' && obra.etapas.some((e) => e.atividades.some((a) => a.itens.some((i) => i.localId === l.id))));
-  const [visao, setVisao] = useState<'andar' | 'etapa'>(temAndares ? 'andar' : 'etapa');
+  // Leva 3: basta a obra ter andar (mesmo sem item ainda), para dar para dividir atividades depois de adicionar o primeiro.
+  const temAndares = obra.locais.some((l) => l.tipo !== 'obra');
+  // Visão escolhida fica guardada neste navegador, por usuário. Sem localStorage (ou valor inválido), cai no padrão.
+  const chaveVisao = `obras:cronograma:visao:${usuarioAtual.id}`;
+  const [visao, setVisaoEstado] = useState<'andar' | 'etapa'>(() => {
+    try {
+      const v = window.localStorage.getItem(chaveVisao);
+      if (v === 'andar' || v === 'etapa') return v;
+    } catch {
+      /* sem localStorage */
+    }
+    return temAndares ? 'andar' : 'etapa';
+  });
+  function setVisao(v: 'andar' | 'etapa') {
+    setVisaoEstado(v);
+    try {
+      window.localStorage.setItem(chaveVisao, v);
+    } catch {
+      /* sem localStorage: só não lembra */
+    }
+  }
   const [filtroLocal, setFiltroLocal] = useState<string>('todos');
   const [predAberta, setPredAberta] = useState<number | null>(null);
   const [desviosPendentes, setDesviosPendentes] = useState<DesvioCronograma[] | null>(null);
@@ -114,6 +134,8 @@ export function AbaCronograma({ obra }: { obra: Obra }) {
   // ---------------------------------------------------------------- avanço (%)
   const pctDe = (it: ItemAtividade) => rascunhoPct[it.id] ?? it.percentual;
   const avancosAlterados = todosItens.filter((it) => rascunhoPct[it.id] != null && rascunhoPct[it.id] !== it.percentual);
+  /** % digitado abaixo do salvo: vai como correção (o histórico registra a volta). */
+  const correcoes = avancosAlterados.filter((it) => rascunhoPct[it.id]! < it.percentual).length;
   function definirPct(itens: ItemAtividade[], valor: number) {
     setRascunhoPct((r) => ({ ...r, ...Object.fromEntries(itens.map((i) => [i.id, valor])) }));
   }
@@ -397,7 +419,18 @@ export function AbaCronograma({ obra }: { obra: Obra }) {
               inputMode="numeric"
               defaultValue={du || ''}
               onBlur={(e) => mudarDuracao(item, e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+              onKeyDown={(e) => {
+                const campo = e.target as HTMLInputElement;
+                // Enter e Tab aplicam aqui também (nem todo ambiente dispara o blur com o valor novo); repetir com o blur dá o mesmo resultado.
+                if (e.key === 'Enter') {
+                  mudarDuracao(item, campo.value);
+                  campo.blur();
+                } else if (e.key === 'Tab') {
+                  // Adiado para o foco andar antes de o campo remontar.
+                  const valor = campo.value;
+                  setTimeout(() => mudarDuracao(item, valor), 0);
+                }
+              }}
               onFocus={(e) => e.target.select()}
               className={cn('h-7 w-14 px-1.5 text-right text-xs tabular-nums', dif !== 0 && 'border-saude-amarelo')}
               aria-label="Duração em dias úteis"
@@ -552,6 +585,12 @@ export function AbaCronograma({ obra }: { obra: Obra }) {
               .filter(Boolean)
               .join(' · ')}{' '}
             pendente{datasAlteradas.length + predAlteradas + avancosAlterados.length === 1 ? '' : 's'}
+            {correcoes > 0 && (
+              <span className="text-saude-amarelo" title="% abaixo do salvo: será lançado como correção.">
+                {' · '}
+                {plural(correcoes, 'correção para baixo', 'correções para baixo')}
+              </span>
+            )}
             {reprog.empurradas.length > 0 && <span className="text-accent"> · {plural(reprog.empurradas.length, 'etapa empurrada', 'etapas empurradas')}</span>}
             {invalidos > 0 && <span className="text-saude-vermelho"> · {invalidos} com fim antes do início</span>}
           </span>
@@ -566,7 +605,10 @@ export function AbaCronograma({ obra }: { obra: Obra }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Cronograma</CardTitle>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <CardTitle>Cronograma</CardTitle>
+            {podeEditarDatas && !semItens && <EditorAndaresObra obra={obra} temMudanca={temMudanca} />}
+          </div>
           <CardDescription>
             Edite direto na tabela{podeEditarDatas ? ' (datas, duração, predecessoras e % realizado)' : ' (% realizado)'} e clique em Salvar no canto superior
             direito. Mudança de prazo a mais de {LIMITE_JUSTIFICATIVA_DU} dias úteis da baseline inicial pede justificativa. Barra cinza = baseline inicial; barra
@@ -628,7 +670,16 @@ export function AbaCronograma({ obra }: { obra: Obra }) {
           {semItens ? (
             <div className="px-5 py-8 text-center text-sm text-muted">Esta obra ainda não tem atividades no cronograma.</div>
           ) : visao === 'andar' && temAndares ? (
-            <GradePorAndar obra={obra} hoje={hoje} pctDe={pctDe} mudarPct={mudarPct} definirPct={definirPct} datasDe={datasAtuais} />
+            <GradePorAndar
+              obra={obra}
+              hoje={hoje}
+              pctDe={pctDe}
+              mudarPct={mudarPct}
+              definirPct={definirPct}
+              datasDe={datasAtuais}
+              podeEditar={podeEditarDatas}
+              temMudanca={temMudanca}
+            />
           ) : (
             <div className="overflow-x-auto" ref={rolagemRef}>
               <table className="w-full min-w-[1280px] text-sm">

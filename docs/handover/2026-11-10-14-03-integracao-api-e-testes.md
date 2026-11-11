@@ -34,7 +34,7 @@
 - Docker Desktop ligado e Postgres dev no container `obras-db-dev`, porta 5433.
 - API em `http://127.0.0.1:3333` (`pnpm dev:api`) e web em `http://127.0.0.1:5180` (`pnpm dev`). Os dois foram iniciados pelo Claude como tarefas em background; se a sessão fechar, rode de novo.
 - Banco com as 6 obras de exemplo recém-recriadas e os modelos no padrão.
-- Logins de teste, com o Otavio de acordo em mantê-los. A senha é `teste-obras-2026`:
+- Logins de teste, com o Otavio de acordo em mantê-los. A senha é guardada fora do git (peça ao Otavio):
   - `diretor@teste.local` (diretor);
   - `carla@teste.local` (engenheira Carla Exemplo);
   - `ze@teste.local` (encarregado Zé Demonstração).
